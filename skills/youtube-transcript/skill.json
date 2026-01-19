@@ -1,0 +1,37 @@
+{
+  "name": "youtube-transcript",
+  "version": "1.0.0",
+  "description": "Скачивает транскрипт YouTube видео и возвращает текст",
+  "author": "elio",
+  "entrypoint": "run.sh",
+  "inputs": {
+    "url": {
+      "type": "string",
+      "required": true,
+      "description": "URL YouTube видео"
+    },
+    "language": {
+      "type": "string",
+      "required": false,
+      "default": "ru",
+      "description": "Язык субтитров (ru, en, auto)"
+    }
+  },
+  "outputs": {
+    "transcript": {
+      "type": "string",
+      "description": "Полный текст транскрипта"
+    },
+    "title": {
+      "type": "string",
+      "description": "Название видео"
+    },
+    "duration": {
+      "type": "number",
+      "description": "Длительность в секундах"
+    }
+  },
+  "dependencies": ["yt-dlp", "jq"],
+  "timeout": 120,
+  "tags": ["youtube", "transcript", "video", "research"]
+}

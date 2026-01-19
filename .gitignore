@@ -1,0 +1,63 @@
+# Secrets - NEVER commit
+secrets/
+.credentials.json
+*.token.json
+
+# Node
+node_modules/
+dist/
+package-lock.json
+
+# Logs and debug
+logs/
+debug/
+
+# Personal data
+context/people/
+context/companies/
+context/projects/
+
+# Session data
+*.jsonl
+
+# File history (Claude internal)
+file-history/
+
+# Cache and state
+cache/
+statsig/
+*.json
+!package.json
+!tsconfig.json
+!skill.json
+
+# IDE
+ide/
+.DS_Store
+*.lock
+
+# Shell snapshots
+shell-snapshots/
+
+# Plugins (submodules)
+plugins/
+
+# Backup
+mac-backup/
+
+# Research outputs (personal)
+research-outputs/
+research/
+
+# Settings
+settings.json
+settings.local.json
+
+# Telemetry
+telemetry/
+
+# Todos
+todos/
+
+# Connectors with credentials
+connectors/

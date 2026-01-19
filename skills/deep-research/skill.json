@@ -1,0 +1,48 @@
+{
+  "name": "deep-research",
+  "version": "2.0.0",
+  "description": "Multi-agent deep research system. Планирует, собирает, анализирует и синтезирует.",
+  "author": "elio",
+  "entrypoint": "run.sh",
+  "implementation": "TypeScript (src/)",
+  "architecture": "See ARCHITECTURE.md",
+  "inputs": {
+    "topic": {
+      "type": "string",
+      "required": true,
+      "description": "Тема для исследования"
+    },
+    "depth": {
+      "type": "string",
+      "required": false,
+      "default": "medium",
+      "description": "Глубина: quick (3 subtopics), medium (5), deep (7)"
+    },
+    "output": {
+      "type": "string",
+      "required": false,
+      "default": "markdown",
+      "description": "Формат: markdown, notion, notebooklm, slides"
+    }
+  },
+  "outputs": {
+    "job": {
+      "type": "object",
+      "description": "ResearchJob with plan, sources, findings, report"
+    },
+    "report_path": {
+      "type": "string",
+      "description": "Path to generated report"
+    }
+  },
+  "agents": [
+    {"name": "planner", "task": "Break topic into subtopics and questions"},
+    {"name": "retrieval", "task": "Gather from web, youtube, papers"},
+    {"name": "analysis", "task": "Extract key facts and findings"},
+    {"name": "synthesis", "task": "Generate coherent report"},
+    {"name": "verification", "task": "Validate facts (optional)"}
+  ],
+  "dependencies": ["tsx"],
+  "timeout": 900,
+  "tags": ["research", "multi-agent", "analysis", "report"]
+}

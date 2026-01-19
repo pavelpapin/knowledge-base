@@ -1,0 +1,33 @@
+{
+  "name": "code-review",
+  "version": "1.0.0",
+  "description": "Анализирует код на соответствие стандартам и предлагает рефакторинг",
+  "author": "elio",
+  "entrypoint": "run.sh",
+  "inputs": {
+    "path": {
+      "type": "string",
+      "required": true,
+      "description": "Путь к директории или файлу для анализа"
+    },
+    "fix": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Автоматически исправить найденные проблемы"
+    }
+  },
+  "outputs": {
+    "issues": {
+      "type": "array",
+      "description": "Найденные проблемы"
+    },
+    "suggestions": {
+      "type": "array",
+      "description": "Предложения по улучшению"
+    }
+  },
+  "dependencies": ["wc", "find"],
+  "timeout": 60,
+  "tags": ["code", "review", "refactor", "quality"]
+}

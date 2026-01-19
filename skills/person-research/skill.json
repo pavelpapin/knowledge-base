@@ -1,0 +1,38 @@
+{
+  "name": "person-research",
+  "version": "1.0.0",
+  "description": "Собирает информацию о человеке из открытых источников",
+  "author": "elio",
+  "entrypoint": "run.sh",
+  "inputs": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "description": "Имя человека"
+    },
+    "context": {
+      "type": "string",
+      "required": false,
+      "description": "Дополнительный контекст (компания, город, профессия)"
+    },
+    "sources": {
+      "type": "array",
+      "required": false,
+      "default": ["linkedin", "twitter", "github", "web"],
+      "description": "Источники для поиска"
+    }
+  },
+  "outputs": {
+    "profile": {
+      "type": "object",
+      "description": "Собранный профиль человека"
+    },
+    "sources": {
+      "type": "array",
+      "description": "Найденные ссылки"
+    }
+  },
+  "dependencies": ["curl", "jq"],
+  "timeout": 300,
+  "tags": ["research", "people", "osint"]
+}

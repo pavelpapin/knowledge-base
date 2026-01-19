@@ -1,0 +1,34 @@
+{
+  "name": "web-search",
+  "version": "1.0.0",
+  "description": "Поиск в интернете через различные источники",
+  "author": "elio",
+  "entrypoint": "run.sh",
+  "inputs": {
+    "query": {
+      "type": "string",
+      "required": true,
+      "description": "Поисковый запрос"
+    },
+    "num_results": {
+      "type": "number",
+      "required": false,
+      "default": 10,
+      "description": "Количество результатов"
+    },
+    "site": {
+      "type": "string",
+      "required": false,
+      "description": "Ограничить поиск сайтом (site:example.com)"
+    }
+  },
+  "outputs": {
+    "results": {
+      "type": "array",
+      "description": "Массив результатов [{title, url, snippet}]"
+    }
+  },
+  "dependencies": ["curl"],
+  "timeout": 60,
+  "tags": ["search", "web", "research"]
+}

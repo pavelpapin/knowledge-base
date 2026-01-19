@@ -1,0 +1,15 @@
+{
+  "name": "elio-headless",
+  "version": "1.0.0",
+  "description": "Headless Mode for Elio OS",
+  "main": "dist/cli.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "headless": "node dist/cli.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.3"
+  }
+}
