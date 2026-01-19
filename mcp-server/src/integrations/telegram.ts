@@ -3,32 +3,15 @@
  * Send notifications, read channels, interact with bot
  */
 
-import * as fs from 'fs';
-import * as https from 'https';
-
-const CREDENTIALS_PATH = '/root/.claude/secrets/telegram-credentials.json';
-
-interface TelegramCredentials {
-  bot_token: string;
-  default_chat_id?: string;
-}
+import { httpRequest, HttpError } from '../utils/http.js';
+import { getTelegramCredentials } from '../utils/credentials.js';
 
 interface TelegramMessage {
   message_id: number;
   date: number;
   text?: string;
-  from?: {
-    id: number;
-    first_name: string;
-    last_name?: string;
-    username?: string;
-  };
-  chat: {
-    id: number;
-    type: string;
-    title?: string;
-    username?: string;
-  };
+  from?: { id: number; first_name: string; last_name?: string; username?: string };
+  chat: { id: number; type: string; title?: string; username?: string };
 }
 
 interface TelegramChat {
@@ -39,56 +22,32 @@ interface TelegramChat {
   description?: string;
 }
 
-function loadCredentials(): TelegramCredentials | null {
-  if (!fs.existsSync(CREDENTIALS_PATH)) {
-    return null;
-  }
-  return JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf-8'));
+interface TelegramResponse<T> {
+  ok: boolean;
+  result: T;
+  description?: string;
 }
 
-async function telegramRequest(
+async function telegramRequest<T>(
   method: string,
   params: Record<string, unknown> = {}
-): Promise<unknown> {
-  const credentials = loadCredentials();
+): Promise<T> {
+  const credentials = getTelegramCredentials();
   if (!credentials) {
-    throw new Error('Telegram not authenticated. Add bot_token to /root/.claude/secrets/telegram-credentials.json');
+    throw new HttpError('Telegram not authenticated. Add bot_token to /root/.claude/secrets/telegram.json');
   }
 
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify(params);
-
-    const options: https.RequestOptions = {
-      hostname: 'api.telegram.org',
-      path: `/bot${credentials.bot_token}/${method}`,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body)
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          if (!json.ok) {
-            reject(new Error(json.description || 'Telegram API error'));
-          } else {
-            resolve(json.result);
-          }
-        } catch {
-          reject(new Error('Invalid response from Telegram'));
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.write(body);
-    req.end();
+  const response = await httpRequest<TelegramResponse<T>>({
+    hostname: 'api.telegram.org',
+    path: `/bot${credentials.bot_token}/${method}`,
+    method: 'POST',
+    body: params
   });
+
+  if (!response.ok) {
+    throw new HttpError(response.description || 'Telegram API error');
+  }
+  return response.result;
 }
 
 // Message sending
@@ -102,25 +61,21 @@ export async function sendMessage(
     replyToMessageId?: number;
   } = {}
 ): Promise<TelegramMessage> {
-  const params: Record<string, unknown> = {
-    chat_id: chatId,
-    text
-  };
-
+  const params: Record<string, unknown> = { chat_id: chatId, text };
   if (options.parseMode) params.parse_mode = options.parseMode;
   if (options.disableNotification) params.disable_notification = true;
   if (options.replyToMessageId) params.reply_to_message_id = options.replyToMessageId;
 
-  return telegramRequest('sendMessage', params) as Promise<TelegramMessage>;
+  return telegramRequest<TelegramMessage>('sendMessage', params);
 }
 
 export async function sendNotification(
   text: string,
   options: { silent?: boolean } = {}
 ): Promise<TelegramMessage> {
-  const credentials = loadCredentials();
+  const credentials = getTelegramCredentials();
   if (!credentials?.default_chat_id) {
-    throw new Error('No default_chat_id configured');
+    throw new HttpError('No default_chat_id configured');
   }
 
   return sendMessage(credentials.default_chat_id, text, {
@@ -133,21 +88,9 @@ export async function sendDocument(
   filePath: string,
   caption?: string
 ): Promise<TelegramMessage> {
-  const credentials = loadCredentials();
-  if (!credentials) {
-    throw new Error('Telegram not authenticated');
-  }
-
-  // For simplicity, we'll just send the file path as a message
-  // Full implementation would use multipart/form-data
-  const params: Record<string, unknown> = {
-    chat_id: chatId,
-    document: filePath
-  };
-
+  const params: Record<string, unknown> = { chat_id: chatId, document: filePath };
   if (caption) params.caption = caption;
-
-  return telegramRequest('sendDocument', params) as Promise<TelegramMessage>;
+  return telegramRequest<TelegramMessage>('sendDocument', params);
 }
 
 export async function sendPhoto(
@@ -155,14 +98,9 @@ export async function sendPhoto(
   photoUrl: string,
   caption?: string
 ): Promise<TelegramMessage> {
-  const params: Record<string, unknown> = {
-    chat_id: chatId,
-    photo: photoUrl
-  };
-
+  const params: Record<string, unknown> = { chat_id: chatId, photo: photoUrl };
   if (caption) params.caption = caption;
-
-  return telegramRequest('sendPhoto', params) as Promise<TelegramMessage>;
+  return telegramRequest<TelegramMessage>('sendPhoto', params);
 }
 
 // Message editing
@@ -178,56 +116,37 @@ export async function editMessage(
     message_id: messageId,
     text
   };
-
   if (parseMode) params.parse_mode = parseMode;
-
-  return telegramRequest('editMessageText', params) as Promise<TelegramMessage>;
+  return telegramRequest<TelegramMessage>('editMessageText', params);
 }
 
-export async function deleteMessage(
-  chatId: string | number,
-  messageId: number
-): Promise<boolean> {
-  await telegramRequest('deleteMessage', {
-    chat_id: chatId,
-    message_id: messageId
-  });
+export async function deleteMessage(chatId: string | number, messageId: number): Promise<boolean> {
+  await telegramRequest<boolean>('deleteMessage', { chat_id: chatId, message_id: messageId });
   return true;
 }
 
 // Chat info
 
 export async function getChat(chatId: string | number): Promise<TelegramChat> {
-  return telegramRequest('getChat', { chat_id: chatId }) as Promise<TelegramChat>;
+  return telegramRequest<TelegramChat>('getChat', { chat_id: chatId });
 }
 
 export async function getChatMemberCount(chatId: string | number): Promise<number> {
-  return telegramRequest('getChatMemberCount', { chat_id: chatId }) as Promise<number>;
+  return telegramRequest<number>('getChatMemberCount', { chat_id: chatId });
 }
 
 // Updates (polling)
 
 export async function getUpdates(
-  options: {
-    offset?: number;
-    limit?: number;
-    timeout?: number;
-  } = {}
-): Promise<Array<{
-  update_id: number;
-  message?: TelegramMessage;
-}>> {
+  options: { offset?: number; limit?: number; timeout?: number } = {}
+): Promise<Array<{ update_id: number; message?: TelegramMessage }>> {
   const params: Record<string, unknown> = {
     limit: options.limit || 10,
     timeout: options.timeout || 0
   };
-
   if (options.offset) params.offset = options.offset;
 
-  return telegramRequest('getUpdates', params) as Promise<Array<{
-    update_id: number;
-    message?: TelegramMessage;
-  }>>;
+  return telegramRequest<Array<{ update_id: number; message?: TelegramMessage }>>('getUpdates', params);
 }
 
 // Bot info
@@ -238,12 +157,7 @@ export async function getMe(): Promise<{
   first_name: string;
   username: string;
 }> {
-  return telegramRequest('getMe') as Promise<{
-    id: number;
-    is_bot: boolean;
-    first_name: string;
-    username: string;
-  }>;
+  return telegramRequest<{ id: number; is_bot: boolean; first_name: string; username: string }>('getMe');
 }
 
 // Inline keyboard
@@ -253,13 +167,11 @@ export async function sendMessageWithButtons(
   text: string,
   buttons: Array<Array<{ text: string; callback_data?: string; url?: string }>>
 ): Promise<TelegramMessage> {
-  return telegramRequest('sendMessage', {
+  return telegramRequest<TelegramMessage>('sendMessage', {
     chat_id: chatId,
     text,
-    reply_markup: {
-      inline_keyboard: buttons
-    }
-  }) as Promise<TelegramMessage>;
+    reply_markup: { inline_keyboard: buttons }
+  });
 }
 
 // Forward message
@@ -269,11 +181,11 @@ export async function forwardMessage(
   fromChatId: string | number,
   messageId: number
 ): Promise<TelegramMessage> {
-  return telegramRequest('forwardMessage', {
+  return telegramRequest<TelegramMessage>('forwardMessage', {
     chat_id: chatId,
     from_chat_id: fromChatId,
     message_id: messageId
-  }) as Promise<TelegramMessage>;
+  });
 }
 
 // Pin message
@@ -283,7 +195,7 @@ export async function pinMessage(
   messageId: number,
   silent = false
 ): Promise<boolean> {
-  await telegramRequest('pinChatMessage', {
+  await telegramRequest<boolean>('pinChatMessage', {
     chat_id: chatId,
     message_id: messageId,
     disable_notification: silent
@@ -292,11 +204,11 @@ export async function pinMessage(
 }
 
 export function isAuthenticated(): boolean {
-  return loadCredentials() !== null;
+  return getTelegramCredentials() !== null;
 }
 
 export function getDefaultChatId(): string | undefined {
-  return loadCredentials()?.default_chat_id;
+  return getTelegramCredentials()?.default_chat_id;
 }
 
 export function getAuthInstructions(): string {
@@ -306,10 +218,7 @@ Telegram Integration Setup:
 1. Create a bot via @BotFather
 2. Get your bot token
 3. Get your chat ID (forward a message to @userinfobot)
-4. Create /root/.claude/secrets/telegram-credentials.json:
-   {
-     "bot_token": "YOUR_BOT_TOKEN",
-     "default_chat_id": "YOUR_CHAT_ID"
-   }
+4. Create /root/.claude/secrets/telegram.json:
+   { "bot_token": "YOUR_BOT_TOKEN", "default_chat_id": "YOUR_CHAT_ID" }
 `;
 }

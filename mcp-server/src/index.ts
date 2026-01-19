@@ -10,7 +10,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { loadSkills, runSkill } from './skills.js';
-import { INTEGRATION_TOOLS } from './tools.js';
+import { INTEGRATION_TOOLS } from './tools/index.js';
 
 const skills = loadSkills();
 
