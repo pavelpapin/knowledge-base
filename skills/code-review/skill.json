@@ -1,7 +1,7 @@
 {
   "name": "code-review",
-  "version": "2.0.0",
-  "description": "AI-powered code review agent designed like an Anthropic CTO would review code. Analyzes for quality, security, performance, scalability, and architectural patterns.",
+  "version": "2.1.0",
+  "description": "AI-powered code review with security audit, dependency scanning, architecture review, and refactoring suggestions. Blocks commits with critical vulnerabilities.",
   "author": "elio",
   "entrypoint": "run.sh",
   "inputs": {
@@ -16,39 +16,59 @@
       "required": false,
       "default": "changed",
       "description": "Review scope: 'changed' (git diff), 'staged', 'full', or path"
-    },
-    "fix": {
-      "type": "boolean",
-      "required": false,
-      "default": false,
-      "description": "Generate fix suggestions with code patches"
-    },
-    "severity": {
-      "type": "string",
-      "required": false,
-      "default": "all",
-      "description": "Filter by severity: critical, high, medium, low, all"
     }
   },
   "outputs": {
-    "report": {
-      "type": "object",
-      "description": "Detailed review report"
-    },
     "score": {
       "type": "number",
       "description": "Code quality score 0-100"
+    },
+    "summary": {
+      "type": "object",
+      "description": "Issue counts by severity"
+    },
+    "vulnerabilities": {
+      "type": "object",
+      "description": "Security vulnerabilities from npm audit"
     },
     "issues": {
       "type": "array",
       "description": "Found issues with severity and location"
     },
-    "suggestions": {
-      "type": "array",
-      "description": "Improvement suggestions"
+    "recommendation": {
+      "type": "string",
+      "description": "BLOCK, REVIEW, or APPROVE"
     }
   },
-  "dependencies": ["wc", "find", "grep", "git"],
-  "timeout": 120,
-  "tags": ["code-quality", "review", "refactoring", "security", "architecture"]
+  "checks": {
+    "security": [
+      "SQL injection patterns",
+      "Hardcoded credentials",
+      "eval() usage",
+      "Dynamic regex (ReDoS)",
+      "npm audit vulnerabilities"
+    ],
+    "architecture": [
+      "File size limits (200 lines)",
+      "Function complexity",
+      "Module structure"
+    ],
+    "type-safety": [
+      "any type usage",
+      "Proper type annotations"
+    ],
+    "dependencies": [
+      "Outdated packages",
+      "Security vulnerabilities",
+      "Critical package updates"
+    ],
+    "best-practices": [
+      "var vs const/let",
+      "Error handling",
+      "Async patterns"
+    ]
+  },
+  "dependencies": ["wc", "find", "grep", "git", "npm"],
+  "timeout": 180,
+  "tags": ["code-quality", "security", "audit", "dependencies", "architecture", "refactoring"]
 }
