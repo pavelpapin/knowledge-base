@@ -1,33 +1,54 @@
 {
   "name": "code-review",
-  "version": "1.0.0",
-  "description": "Анализирует код на соответствие стандартам и предлагает рефакторинг",
+  "version": "2.0.0",
+  "description": "AI-powered code review agent designed like an Anthropic CTO would review code. Analyzes for quality, security, performance, scalability, and architectural patterns.",
   "author": "elio",
   "entrypoint": "run.sh",
   "inputs": {
     "path": {
       "type": "string",
-      "required": true,
-      "description": "Путь к директории или файлу для анализа"
+      "required": false,
+      "default": ".",
+      "description": "Path to review (file or directory)"
+    },
+    "scope": {
+      "type": "string",
+      "required": false,
+      "default": "changed",
+      "description": "Review scope: 'changed' (git diff), 'staged', 'full', or path"
     },
     "fix": {
       "type": "boolean",
       "required": false,
       "default": false,
-      "description": "Автоматически исправить найденные проблемы"
+      "description": "Generate fix suggestions with code patches"
+    },
+    "severity": {
+      "type": "string",
+      "required": false,
+      "default": "all",
+      "description": "Filter by severity: critical, high, medium, low, all"
     }
   },
   "outputs": {
+    "report": {
+      "type": "object",
+      "description": "Detailed review report"
+    },
+    "score": {
+      "type": "number",
+      "description": "Code quality score 0-100"
+    },
     "issues": {
       "type": "array",
-      "description": "Найденные проблемы"
+      "description": "Found issues with severity and location"
     },
     "suggestions": {
       "type": "array",
-      "description": "Предложения по улучшению"
+      "description": "Improvement suggestions"
     }
   },
-  "dependencies": ["wc", "find"],
-  "timeout": 60,
-  "tags": ["code", "review", "refactor", "quality"]
+  "dependencies": ["wc", "find", "grep", "git"],
+  "timeout": 120,
+  "tags": ["code-quality", "review", "refactoring", "security", "architecture"]
 }
