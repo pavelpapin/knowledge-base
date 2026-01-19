@@ -1,0 +1,49 @@
+{
+  "name": "auto-test",
+  "version": "1.0.0",
+  "description": "Automated testing system that runs core functionality tests on every commit. Validates MCP server, integrations, and core modules.",
+  "author": "elio",
+  "entrypoint": "run.sh",
+  "inputs": {
+    "scope": {
+      "type": "string",
+      "required": false,
+      "default": "changed",
+      "description": "Test scope: 'changed' (test affected modules), 'full' (all tests), 'quick' (smoke tests)"
+    }
+  },
+  "outputs": {
+    "passed": {
+      "type": "boolean",
+      "description": "Whether all tests passed"
+    },
+    "summary": {
+      "type": "object",
+      "description": "Test results by category"
+    },
+    "failures": {
+      "type": "array",
+      "description": "List of failed tests with details"
+    }
+  },
+  "tests": {
+    "mcp-server": [
+      "Server starts without errors",
+      "Tools register correctly",
+      "Integration modules load"
+    ],
+    "core": [
+      "TypeScript compilation succeeds",
+      "Exports are valid",
+      "No circular dependencies"
+    ],
+    "integrations": [
+      "Auth functions exist",
+      "API request functions defined",
+      "Type exports valid"
+    ]
+  },
+  "dependencies": ["node", "npm", "tsc"],
+  "timeout": 120,
+  "tags": ["testing", "ci", "validation", "quality"]
+}

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Code Review Skill v2.1
-# AI-powered code review with dependency audit
+# Code Review Skill v2.2
+# AI-powered code review with architecture analysis & auto-refactoring suggestions
 
 PATH_TO_CHECK="${1:-.}"
 SCOPE="${2:-changed}"
@@ -9,12 +9,18 @@ STANDARDS_FILE="/root/.claude/STANDARDS.md"
 ISSUES=()
 SUGGESTIONS=()
 VULNERABILITIES=()
+REFACTORING=()
 CRITICAL_COUNT=0
 HIGH_COUNT=0
 MEDIUM_COUNT=0
 LOW_COUNT=0
 VULN_CRITICAL=0
 VULN_HIGH=0
+
+# Architecture metrics
+TOTAL_LINES=0
+LARGE_FILES=0
+COMPLEX_FUNCTIONS=0
 
 # Get files to review based on scope
 get_files() {
@@ -78,6 +84,33 @@ add_vulnerability() {
     VULNERABILITIES+=("{\"package\":\"$pkg\",\"severity\":\"$severity\",\"description\":\"$desc\",\"fix\":\"$fix\"}")
 }
 
+add_refactoring() {
+    local file="$1"
+    local type="$2"
+    local reason="$3"
+    local suggestion="$4"
+
+    REFACTORING+=("{\"file\":\"$file\",\"type\":\"$type\",\"reason\":\"$reason\",\"suggestion\":\"$suggestion\"}")
+}
+
+# Get appropriate line limit based on file type
+get_line_limit() {
+    local file="$1"
+    # Integration files can be larger (300 lines)
+    if [[ "$file" == *"/integrations/"* ]]; then
+        echo 300
+    # Test files can be larger
+    elif [[ "$file" == *".test."* ]] || [[ "$file" == *".spec."* ]]; then
+        echo 400
+    # CLI files can be larger (250 lines)
+    elif [[ "$file" == *"cli.ts"* ]] || [[ "$file" == *"cli.js"* ]]; then
+        echo 250
+    # Standard limit
+    else
+        echo 200
+    fi
+}
+
 # Check dependencies for vulnerabilities and outdated versions
 check_dependencies() {
     local pkg_dir="$1"
@@ -136,6 +169,10 @@ check_file() {
 
     local lines
     lines=$(wc -l < "$file" 2>/dev/null | tr -d ' ')
+    TOTAL_LINES=$((TOTAL_LINES + lines))
+
+    local line_limit
+    line_limit=$(get_line_limit "$file")
 
     # === CRITICAL: Security Issues ===
 
@@ -144,8 +181,8 @@ check_file() {
         add_issue "$file" 0 "critical" "security" "Potential SQL injection - use parameterized queries" "Use prepared statements"
     fi
 
-    # Hardcoded secrets
-    if grep -qE "(password|secret|api_key|apikey|token)\s*=\s*['\"][^'\"]+['\"]" "$file" 2>/dev/null; then
+    # Hardcoded secrets (more specific pattern to avoid false positives)
+    if grep -qE "(password|secret|api_key|apikey|private_key)\s*[:=]\s*['\"][A-Za-z0-9_-]{8,}['\"]" "$file" 2>/dev/null; then
         add_issue "$file" 0 "critical" "security" "Hardcoded credentials detected" "Use environment variables"
     fi
 
@@ -161,16 +198,38 @@ check_file() {
 
     # === HIGH: Code Quality & Architecture ===
 
-    # File too large (>200 lines)
-    if [ "$lines" -gt 200 ]; then
-        add_issue "$file" 0 "high" "architecture" "File has $lines lines (max 200)" "Split into smaller modules"
+    # File too large (dynamic limit based on file type)
+    if [ "$lines" -gt "$line_limit" ]; then
+        LARGE_FILES=$((LARGE_FILES + 1))
+        add_issue "$file" 0 "high" "architecture" "File has $lines lines (max $line_limit)" "Split into smaller modules"
+
+        # Add specific refactoring suggestion
+        local basename=$(basename "$file")
+        if [[ "$file" == *"/integrations/"* ]]; then
+            add_refactoring "$file" "split" "Integration file too large" "Split into: ${basename%.ts}-types.ts, ${basename%.ts}-utils.ts, ${basename}"
+        elif [[ "$file" == *"cli"* ]]; then
+            add_refactoring "$file" "split" "CLI file too large" "Extract commands into separate files under commands/"
+        else
+            add_refactoring "$file" "split" "File exceeds size limit" "Extract related functions into separate modules"
+        fi
     fi
 
     # 'any' type usage
     local any_count
     any_count=$(grep -c ': any' "$file" 2>/dev/null) || any_count=0
-    if [ "$any_count" -gt 0 ]; then
+    if [ "$any_count" -gt 3 ]; then
         add_issue "$file" 0 "high" "type-safety" "Found $any_count uses of any type" "Add proper type annotations"
+        add_refactoring "$file" "types" "Excessive any usage" "Define interfaces for unknown data structures"
+    elif [ "$any_count" -gt 0 ]; then
+        add_issue "$file" 0 "medium" "type-safety" "Found $any_count uses of any type" "Add proper type annotations"
+    fi
+
+    # Function complexity - count functions with >30 lines
+    local long_functions
+    long_functions=$(awk '/^(export )?(async )?function|^(export )?const \w+ = (async )?\(/ { start=NR } /^}$/ && start { if(NR-start>30) count++ } END { print count+0 }' "$file" 2>/dev/null)
+    if [ "${long_functions:-0}" -gt 0 ]; then
+        COMPLEX_FUNCTIONS=$((COMPLEX_FUNCTIONS + long_functions))
+        add_suggestion "$file" "complexity" "Found $long_functions functions with >30 lines - consider breaking down"
     fi
 
     # Deprecated API usage
@@ -187,28 +246,43 @@ check_file() {
         add_issue "$file" 0 "medium" "modernization" "Using var instead of const/let" "Replace var with const/let"
     fi
 
-    # Missing error handling in async
-    if grep -qE 'await\s+[^;]+;' "$file" 2>/dev/null && ! grep -q 'try\s*{' "$file" 2>/dev/null; then
+    # Missing error handling in async (only for files without any try-catch)
+    local await_count try_count
+    await_count=$(grep -c 'await\s' "$file" 2>/dev/null) || await_count=0
+    try_count=$(grep -c 'try\s*{' "$file" 2>/dev/null) || try_count=0
+    if [ "$await_count" -gt 3 ] && [ "$try_count" -eq 0 ]; then
         add_suggestion "$file" "error-handling" "Consider adding try-catch for async operations"
     fi
 
-    # Synchronous fs operations
-    if grep -qE '(readFileSync|writeFileSync|existsSync)' "$file" 2>/dev/null; then
-        add_suggestion "$file" "performance" "Consider using async fs operations for better performance"
+    # Synchronous fs operations in non-config files
+    if grep -qE '(readFileSync|writeFileSync)' "$file" 2>/dev/null; then
+        if [[ "$file" != *"config"* ]] && [[ "$file" != *".json"* ]]; then
+            add_suggestion "$file" "performance" "Consider using async fs operations for better performance"
+        fi
+    fi
+
+    # Duplicate code patterns (simple check for similar lines)
+    local dup_patterns
+    dup_patterns=$(sort "$file" 2>/dev/null | uniq -d | wc -l | tr -d ' ')
+    if [ "${dup_patterns:-0}" -gt 10 ]; then
+        add_suggestion "$file" "duplication" "Potential code duplication detected - consider extraction"
     fi
 
     # === LOW: Style & Optimization ===
 
-    # Console.log (>2 occurrences)
-    local console_count
+    # Console.log (>5 occurrences for non-CLI files)
+    local console_count console_limit=5
+    [[ "$file" == *"cli"* ]] && console_limit=20
     console_count=$(grep -c 'console.log' "$file" 2>/dev/null) || console_count=0
-    if [ "$console_count" -gt 2 ]; then
+    if [ "$console_count" -gt "$console_limit" ]; then
         add_issue "$file" 0 "low" "logging" "Found $console_count console.log statements" "Use structured logger"
     fi
 
     # TODO/FIXME comments
-    if grep -qiE '(TODO|FIXME|HACK|XXX):' "$file" 2>/dev/null; then
-        add_suggestion "$file" "maintenance" "Contains TODO/FIXME comments that need attention"
+    local todo_count
+    todo_count=$(grep -ciE '(TODO|FIXME|HACK|XXX):' "$file" 2>/dev/null) || todo_count=0
+    if [ "$todo_count" -gt 0 ]; then
+        add_suggestion "$file" "maintenance" "Contains $todo_count TODO/FIXME comments"
     fi
 }
 
@@ -246,20 +320,37 @@ else
     RECOMMENDATION="APPROVE: Code meets quality standards"
 fi
 
+# Calculate architecture score (0-100)
+AVG_LINES_PER_FILE=0
+[ "$FILES_COUNT" -gt 0 ] && AVG_LINES_PER_FILE=$((TOTAL_LINES / FILES_COUNT))
+
+ARCH_SCORE=100
+[ "$LARGE_FILES" -gt 0 ] && ARCH_SCORE=$((ARCH_SCORE - LARGE_FILES * 5))
+[ "$COMPLEX_FUNCTIONS" -gt 0 ] && ARCH_SCORE=$((ARCH_SCORE - COMPLEX_FUNCTIONS * 2))
+[ "$AVG_LINES_PER_FILE" -gt 150 ] && ARCH_SCORE=$((ARCH_SCORE - 10))
+[ "$ARCH_SCORE" -lt 0 ] && ARCH_SCORE=0
+
 # Output JSON
 cat << EOF
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "scope": "$SCOPE",
   "path": "$PATH_TO_CHECK",
   "files_checked": $FILES_COUNT,
   "score": $SCORE,
+  "architecture_score": $ARCH_SCORE,
   "summary": {
     "critical": $CRITICAL_COUNT,
     "high": $HIGH_COUNT,
     "medium": $MEDIUM_COUNT,
     "low": $LOW_COUNT,
     "total": $TOTAL_ISSUES
+  },
+  "metrics": {
+    "total_lines": $TOTAL_LINES,
+    "avg_lines_per_file": $AVG_LINES_PER_FILE,
+    "large_files": $LARGE_FILES,
+    "complex_functions": $COMPLEX_FUNCTIONS
   },
   "vulnerabilities": {
     "critical": $VULN_CRITICAL,
@@ -269,6 +360,7 @@ cat << EOF
   },
   "issues": [$(IFS=','; echo "${ISSUES[*]}")],
   "suggestions": [$(IFS=','; echo "${SUGGESTIONS[*]}")],
+  "refactoring": [$(IFS=','; echo "${REFACTORING[*]}")],
   "standards": "$STANDARDS_FILE",
   "recommendation": "$RECOMMENDATION"
 }
