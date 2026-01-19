@@ -2,7 +2,7 @@
  * NotebookLM tools
  */
 
-import * as notebooklm from '../integrations/notebooklm.js';
+import * as notebooklm from '../integrations/notebooklm/index.js';
 import { Tool, paramString } from './types.js';
 
 export const notebookTools: Tool[] = [

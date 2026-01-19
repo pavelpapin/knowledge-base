@@ -2,7 +2,7 @@
  * LinkedIn tools
  */
 
-import * as linkedin from '../integrations/linkedin.js';
+import * as linkedin from '../integrations/linkedin/index.js';
 import { Tool, paramString } from './types.js';
 
 export const linkedinTools: Tool[] = [

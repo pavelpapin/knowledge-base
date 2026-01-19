@@ -2,7 +2,7 @@
  * n8n tools
  */
 
-import * as n8n from '../integrations/n8n.js';
+import * as n8n from '../integrations/n8n/index.js';
 import { Tool, paramString, paramNumber, safeJsonParse } from './types.js';
 
 export const n8nTools: Tool[] = [

@@ -1,66 +1,15 @@
 /**
  * NotebookLM Integration
  * Interact with Google NotebookLM for research and summarization
- *
- * Note: NotebookLM doesn't have a public API yet.
- * This integration uses web automation / unofficial methods.
- * For now, we provide utilities to prepare content for NotebookLM
- * and parse its outputs.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { loadStore, saveStore, generateId, SOURCES_PATH, isConfigured, getInstructions } from './store.js';
+import type { Notebook, NotebookSource, ExportData, NotebookStats } from './types.js';
 
-const NOTEBOOKS_PATH = '/root/.claude/notebooklm/notebooks';
-const SOURCES_PATH = '/root/.claude/notebooklm/sources';
-
-interface NotebookSource {
-  id: string;
-  type: 'text' | 'url' | 'pdf' | 'gdoc';
-  title: string;
-  content?: string;
-  url?: string;
-  filePath?: string;
-  addedAt: string;
-}
-
-interface Notebook {
-  id: string;
-  name: string;
-  description?: string;
-  sources: NotebookSource[];
-  notes: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface NotebooksStore {
-  notebooks: Notebook[];
-}
-
-function ensureDirs(): void {
-  fs.mkdirSync(NOTEBOOKS_PATH, { recursive: true });
-  fs.mkdirSync(SOURCES_PATH, { recursive: true });
-}
-
-function loadStore(): NotebooksStore {
-  ensureDirs();
-  const storePath = path.join(NOTEBOOKS_PATH, 'store.json');
-  if (fs.existsSync(storePath)) {
-    return JSON.parse(fs.readFileSync(storePath, 'utf-8'));
-  }
-  return { notebooks: [] };
-}
-
-function saveStore(store: NotebooksStore): void {
-  ensureDirs();
-  const storePath = path.join(NOTEBOOKS_PATH, 'store.json');
-  fs.writeFileSync(storePath, JSON.stringify(store, null, 2));
-}
-
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 10);
-}
+export type { Notebook, NotebookSource, ExportData, NotebookStats } from './types.js';
+export { isConfigured, getInstructions } from './store.js';
 
 // Notebook management
 
@@ -104,11 +53,7 @@ export function deleteNotebook(notebookId: string): boolean {
 
 // Source management
 
-export function addTextSource(
-  notebookId: string,
-  title: string,
-  content: string
-): NotebookSource | null {
+export function addTextSource(notebookId: string, title: string, content: string): NotebookSource | null {
   const store = loadStore();
   const notebook = store.notebooks.find(n => n.id === notebookId);
   if (!notebook) return null;
@@ -121,7 +66,6 @@ export function addTextSource(
     addedAt: new Date().toISOString()
   };
 
-  // Save content to file
   const filePath = path.join(SOURCES_PATH, `${source.id}.txt`);
   fs.writeFileSync(filePath, content);
   source.filePath = filePath;
@@ -133,11 +77,7 @@ export function addTextSource(
   return source;
 }
 
-export function addUrlSource(
-  notebookId: string,
-  title: string,
-  url: string
-): NotebookSource | null {
+export function addUrlSource(notebookId: string, title: string, url: string): NotebookSource | null {
   const store = loadStore();
   const notebook = store.notebooks.find(n => n.id === notebookId);
   if (!notebook) return null;
@@ -157,11 +97,7 @@ export function addUrlSource(
   return source;
 }
 
-export function addGoogleDocSource(
-  notebookId: string,
-  title: string,
-  docId: string
-): NotebookSource | null {
+export function addGoogleDocSource(notebookId: string, title: string, docId: string): NotebookSource | null {
   const store = loadStore();
   const notebook = store.notebooks.find(n => n.id === notebookId);
   if (!notebook) return null;
@@ -222,11 +158,7 @@ export function getNotes(notebookId: string): string[] {
 
 // Export for NotebookLM import
 
-export function exportForNotebookLM(notebookId: string): {
-  urls: string[];
-  texts: Array<{ title: string; content: string }>;
-  googleDocs: string[];
-} {
+export function exportForNotebookLM(notebookId: string): ExportData {
   const notebook = getNotebook(notebookId);
   if (!notebook) {
     return { urls: [], texts: [], googleDocs: [] };
@@ -266,7 +198,6 @@ export function generateAnalysisPrompt(notebookId: string): string {
   if (!notebook) return '';
 
   const exportData = exportForNotebookLM(notebookId);
-
   let prompt = `Analyze the following sources for the notebook "${notebook.name}":\n\n`;
 
   if (notebook.description) {
@@ -312,11 +243,7 @@ Please provide:
 
 // Stats
 
-export function getStats(): {
-  totalNotebooks: number;
-  totalSources: number;
-  totalNotes: number;
-} {
+export function getStats(): NotebookStats {
   const store = loadStore();
   let totalSources = 0;
   let totalNotes = 0;
@@ -331,33 +258,4 @@ export function getStats(): {
     totalSources,
     totalNotes
   };
-}
-
-export function isConfigured(): boolean {
-  ensureDirs();
-  return true;
-}
-
-export function getInstructions(): string {
-  return `
-NotebookLM Integration:
-
-This is a local notebook management system that mimics NotebookLM functionality.
-It helps organize sources and generate prompts for AI analysis.
-
-Note: Google NotebookLM doesn't have a public API yet.
-This integration provides:
-- Local notebook/source management
-- Export functionality for manual import to NotebookLM
-- Prompt generation for similar AI analysis
-
-Usage:
-1. Create notebooks to organize research
-2. Add sources (text, URLs, Google Docs)
-3. Add notes as you research
-4. Export sources for NotebookLM import
-5. Generate analysis prompts for Claude
-
-Data is stored at: /root/.claude/notebooklm/
-`;
 }

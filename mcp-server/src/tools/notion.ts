@@ -2,7 +2,7 @@
  * Notion tools
  */
 
-import * as notion from '../integrations/notion.js';
+import * as notion from '../integrations/notion/index.js';
 import { Tool, paramString, safeJsonParse } from './types.js';
 
 export const notionTools: Tool[] = [
