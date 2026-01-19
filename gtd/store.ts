@@ -4,7 +4,7 @@
 
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import { GTDStore, Task, Project, TaskStatus, TaskPriority, TaskContext } from './types.js';
+import { GTDStore, Task, Project, TaskStatus, TaskContext } from './types.js';
 
 const STORE_PATH = '/root/.claude/gtd/store.json';
 

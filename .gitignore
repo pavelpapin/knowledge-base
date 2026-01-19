@@ -8,6 +8,9 @@ node_modules/
 dist/
 package-lock.json
 
+# Turborepo
+.turbo/
+
 # Logs and debug
 logs/
 debug/
@@ -29,6 +32,8 @@ statsig/
 *.json
 !package.json
 !tsconfig.json
+!tsconfig.base.json
+!turbo.json
 !skill.json
 
 # IDE

@@ -3,7 +3,7 @@
  * Aggregates all tool modules
  */
 
-export { Tool, ToolInputSchema } from './types.js';
+export type { Tool, ToolInputSchema } from './types.js';
 
 import { gmailTools } from './gmail.js';
 import { calendarTools } from './calendar.js';

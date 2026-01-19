@@ -23,7 +23,7 @@ function printEntity(e: Entity): void {
   console.log(`   Mentions: ${e.mentionCount}`);
 }
 
-function printRelation(r: Relation, source: Entity | null, target: Entity | null): void {
+function _printRelation(r: Relation, source: Entity | null, target: Entity | null): void {
   const srcName = source?.name || r.sourceId.substring(0, 8);
   const tgtName = target?.name || r.targetId.substring(0, 8);
   console.log(`  ${srcName} --[${r.type}]--> ${tgtName} (strength: ${r.strength.toFixed(2)})`);
@@ -113,7 +113,7 @@ switch (command) {
       console.error('Entity not found');
       process.exit(1);
     }
-    const relation = store.addRelation(relType as RelationType, source.id, target.id);
+    store.addRelation(relType as RelationType, source.id, target.id);
     console.log(`✅ Linked: ${source.name} --[${relType}]--> ${target.name}`);
     break;
   }

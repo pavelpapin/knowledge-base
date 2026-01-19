@@ -3,7 +3,7 @@
  */
 
 import * as store from './store.js';
-import { TaskStatus, TaskPriority, TaskContext, Project } from './types.js';
+import { TaskStatus, TaskPriority, Project } from './types.js';
 
 const command = process.argv[2];
 const args = process.argv.slice(3);

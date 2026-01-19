@@ -1,5 +1,5 @@
 {
-  "name": "elio-scheduler",
+  "name": "@elio/scheduler",
   "version": "1.0.0",
   "description": "Elio Scheduled Jobs - cron-based task automation",
   "main": "dist/index.js",
@@ -7,14 +7,14 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "croner": "^9.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "tsx": "^4.21.0"
   }
 }

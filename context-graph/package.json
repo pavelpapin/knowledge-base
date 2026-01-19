@@ -1,15 +1,13 @@
 {
-  "name": "elio-context-graph",
+  "name": "@elio/context-graph",
   "version": "1.0.0",
   "description": "Context Graph for Elio OS",
   "main": "dist/cli.js",
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "graph": "node dist/cli.js"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.9.3"
+    "start": "node dist/cli.js",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
   }
 }
