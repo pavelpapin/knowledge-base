@@ -5,9 +5,10 @@
 
 import { spawn } from 'child_process';
 import * as path from 'path';
+import { paths } from '@elio/shared';
 import { ScheduledJob, JobResult } from './types.js';
 
-const SKILLS_DIR = '/root/.claude/skills';
+const SKILLS_DIR = paths.skills;
 
 export async function executeJob(job: ScheduledJob): Promise<JobResult> {
   const startTime = Date.now();

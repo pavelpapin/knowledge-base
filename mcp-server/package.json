@@ -12,9 +12,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@elio/shared": "*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@supabase/supabase-js": "^2.90.1",
+    "openai": "^6.16.0",
+    "pg": "^8.17.1"
   },
   "devDependencies": {
+    "@types/pg": "^8.16.0",
     "tsx": "^4.21.0"
   }
 }

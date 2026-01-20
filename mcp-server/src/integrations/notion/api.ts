@@ -2,64 +2,35 @@
  * Notion API Utilities
  */
 
-import * as fs from 'fs';
-import * as https from 'https';
-import type { NotionCredentials } from './types.js';
+import { httpRequest } from '../../utils/http.js';
+import { loadCredentialsSync, NotionCredentials } from '../../utils/credentials.js';
 
-const CREDENTIALS_PATH = '/root/.claude/secrets/notion-token.json';
+const CREDENTIALS_FILE = 'notion-token.json';
 const NOTION_VERSION = '2022-06-28';
 
 export function loadCredentials(): NotionCredentials | null {
-  if (!fs.existsSync(CREDENTIALS_PATH)) {
-    return null;
-  }
-  return JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf-8'));
+  return loadCredentialsSync<NotionCredentials>(CREDENTIALS_FILE);
 }
 
-export async function notionRequest(
+export async function notionRequest<T = unknown>(
   endpoint: string,
-  method = 'GET',
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET',
   body?: unknown
-): Promise<unknown> {
+): Promise<T> {
   const credentials = loadCredentials();
   if (!credentials) {
     throw new Error('Notion not authenticated. Add api_key to /root/.claude/secrets/notion-token.json');
   }
 
-  return new Promise((resolve, reject) => {
-    const options: https.RequestOptions = {
-      hostname: 'api.notion.com',
-      path: `/v1${endpoint}`,
-      method,
-      headers: {
-        'Authorization': `Bearer ${credentials.api_key}`,
-        'Notion-Version': NOTION_VERSION,
-        'Content-Type': 'application/json'
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          if (json.object === 'error') {
-            reject(new Error(json.message));
-          } else {
-            resolve(json);
-          }
-        } catch {
-          resolve(data);
-        }
-      });
-    });
-
-    req.on('error', reject);
-    if (body) {
-      req.write(JSON.stringify(body));
-    }
-    req.end();
+  return httpRequest<T>({
+    hostname: 'api.notion.com',
+    path: `/v1${endpoint}`,
+    method,
+    headers: {
+      'Authorization': `Bearer ${credentials.api_key}`,
+      'Notion-Version': NOTION_VERSION
+    },
+    body
   });
 }
 

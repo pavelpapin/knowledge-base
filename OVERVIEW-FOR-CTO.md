@@ -207,16 +207,15 @@ Elio OS - персональная AI Operating System с Claude (Opus 4.5) ка
 ## Deployment
 
 ```bash
-# Server
-IP: 167.99.210.229
-OS: Ubuntu 24.04
+# Server requirements
+OS: Ubuntu 24.04 (or any Linux)
 
 # Services
 systemctl status elio-bot    # Telegram bot
 journalctl -u elio-bot -f    # Logs
 
 # MCP Server
-cd /root/.claude/mcp-server && npm run build && node dist/index.js
+cd mcp-server && npm run build && node dist/index.js
 ```
 
 ---
@@ -224,10 +223,10 @@ cd /root/.claude/mcp-server && npm run build && node dist/index.js
 ## What's Next (Roadmap)
 
 ### Short-term
-- [ ] Connect real Telegram bot to workflows
+- [ ] Connect Telegram bot to workflows
 - [ ] Implement scheduled triggers (cron)
-- [ ] Add more context/people/ profiles
-- [ ] Create context/companies/nebius-academy.md
+- [ ] Add context/people/ profiles
+- [ ] Create company context files
 
 ### Medium-term
 - [ ] Voice interface (Whisper + TTS)

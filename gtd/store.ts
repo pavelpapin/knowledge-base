@@ -1,29 +1,23 @@
 /**
  * GTD Store - Persistence layer
+ * Uses @elio/shared for storage
  */
 
-import * as fs from 'fs';
 import * as crypto from 'crypto';
+import { createStore, paths } from '@elio/shared';
 import { GTDStore, Task, Project, TaskStatus, TaskContext } from './types.js';
 
-const STORE_PATH = '/root/.claude/gtd/store.json';
+const DEFAULT_STORE: GTDStore = {
+  tasks: [],
+  projects: []
+};
 
-function loadStore(): GTDStore {
-  if (fs.existsSync(STORE_PATH)) {
-    return JSON.parse(fs.readFileSync(STORE_PATH, 'utf-8'));
-  }
-  return { tasks: [], projects: [] };
-}
-
-function saveStore(store: GTDStore): void {
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
-}
+const store = createStore<GTDStore>(paths.data.gtd, DEFAULT_STORE);
 
 export function addTask(
   title: string,
   options: Partial<Omit<Task, 'id' | 'title' | 'createdAt' | 'updatedAt'>> = {}
 ): Task {
-  const store = loadStore();
   const now = new Date().toISOString();
 
   const task: Task = {
@@ -37,41 +31,50 @@ export function addTask(
     ...options
   };
 
-  store.tasks.push(task);
-  saveStore(store);
+  store.update(current => ({
+    ...current,
+    tasks: [...current.tasks, task]
+  }));
+
   return task;
 }
 
 export function updateTask(id: string, updates: Partial<Task>): Task | null {
-  const store = loadStore();
-  const index = store.tasks.findIndex(t => t.id === id);
+  let updatedTask: Task | null = null;
 
-  if (index === -1) return null;
+  store.update(current => {
+    const index = current.tasks.findIndex(t => t.id === id);
+    if (index === -1) return current;
 
-  store.tasks[index] = {
-    ...store.tasks[index],
-    ...updates,
-    updatedAt: new Date().toISOString()
-  };
+    const task = {
+      ...current.tasks[index],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
 
-  if (updates.status === 'done' && !store.tasks[index].completedAt) {
-    store.tasks[index].completedAt = new Date().toISOString();
-  }
+    if (updates.status === 'done' && !task.completedAt) {
+      task.completedAt = new Date().toISOString();
+    }
 
-  saveStore(store);
-  return store.tasks[index];
+    updatedTask = task;
+    const tasks = [...current.tasks];
+    tasks[index] = task;
+    return { ...current, tasks };
+  });
+
+  return updatedTask;
 }
 
 export function getTasksByStatus(status: TaskStatus): Task[] {
-  return loadStore().tasks.filter(t => t.status === status);
+  return store.load().tasks.filter(t => t.status === status);
 }
 
 export function getTasksByContext(context: TaskContext): Task[] {
-  return loadStore().tasks.filter(t => t.context === context && t.status === 'next');
+  return store.load().tasks.filter(t => t.context === context && t.status === 'next');
 }
 
 export function getTasksByProject(projectId: string): Task[] {
-  return loadStore().tasks.filter(t => t.project === projectId);
+  return store.load().tasks.filter(t => t.project === projectId);
 }
 
 export function getInbox(): Task[] {
@@ -87,10 +90,8 @@ export function getWaiting(): Task[] {
 }
 
 export function getDueTasks(beforeDate?: string): Task[] {
-  const store = loadStore();
   const cutoff = beforeDate || new Date().toISOString().split('T')[0];
-
-  return store.tasks.filter(t =>
+  return store.load().tasks.filter(t =>
     t.status !== 'done' &&
     t.dueDate &&
     t.dueDate <= cutoff
@@ -98,7 +99,6 @@ export function getDueTasks(beforeDate?: string): Task[] {
 }
 
 export function addProject(name: string, outcome: string, description?: string): Project {
-  const store = loadStore();
   const now = new Date().toISOString();
 
   const project: Project = {
@@ -112,41 +112,49 @@ export function addProject(name: string, outcome: string, description?: string):
     updatedAt: now
   };
 
-  store.projects.push(project);
-  saveStore(store);
+  store.update(current => ({
+    ...current,
+    projects: [...current.projects, project]
+  }));
+
   return project;
 }
 
 export function getActiveProjects(): Project[] {
-  return loadStore().projects.filter(p => p.status === 'active');
+  return store.load().projects.filter(p => p.status === 'active');
 }
 
 export function getAllTasks(): Task[] {
-  return loadStore().tasks;
+  return store.load().tasks;
 }
 
 export function getAllProjects(): Project[] {
-  return loadStore().projects;
+  return store.load().projects;
 }
 
 export function deleteTask(id: string): boolean {
-  const store = loadStore();
-  const index = store.tasks.findIndex(t => t.id === id);
-  if (index === -1) return false;
-  store.tasks.splice(index, 1);
-  saveStore(store);
-  return true;
+  let found = false;
+
+  store.update(current => {
+    const index = current.tasks.findIndex(t => t.id === id);
+    if (index === -1) return current;
+    found = true;
+    const tasks = current.tasks.filter(t => t.id !== id);
+    return { ...current, tasks };
+  });
+
+  return found;
 }
 
 export function getStats(): { inbox: number; next: number; waiting: number; projects: number; overdue: number } {
-  const store = loadStore();
+  const data = store.load();
   const today = new Date().toISOString().split('T')[0];
 
   return {
-    inbox: store.tasks.filter(t => t.status === 'inbox').length,
-    next: store.tasks.filter(t => t.status === 'next').length,
-    waiting: store.tasks.filter(t => t.status === 'waiting').length,
-    projects: store.projects.filter(p => p.status === 'active').length,
-    overdue: store.tasks.filter(t => t.dueDate && t.dueDate < today && t.status !== 'done').length
+    inbox: data.tasks.filter(t => t.status === 'inbox').length,
+    next: data.tasks.filter(t => t.status === 'next').length,
+    waiting: data.tasks.filter(t => t.status === 'waiting').length,
+    projects: data.projects.filter(p => p.status === 'active').length,
+    overdue: data.tasks.filter(t => t.dueDate && t.dueDate < today && t.status !== 'done').length
   };
 }

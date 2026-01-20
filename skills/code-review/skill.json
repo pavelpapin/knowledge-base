@@ -1,9 +1,10 @@
 {
   "name": "code-review",
-  "version": "2.2.0",
-  "description": "AI-powered code review with security audit, dependency scanning, architecture analysis, complexity metrics, and auto-refactoring suggestions.",
+  "version": "2.3.0",
+  "description": "AI-powered code review with security audit, dependency scanning, architecture analysis, complexity metrics, and auto-refactoring. Use autoFix=true to automatically apply changes.",
   "author": "elio",
   "entrypoint": "run.sh",
+  "instructions": "SKILL.md",
   "inputs": {
     "path": {
       "type": "string",
@@ -16,6 +17,18 @@
       "required": false,
       "default": "changed",
       "description": "Review scope: 'changed' (git diff), 'staged', 'full', or path"
+    },
+    "autoFix": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Auto-apply refactoring suggestions (split files, add types, etc.)"
+    },
+    "depth": {
+      "type": "string",
+      "required": false,
+      "default": "standard",
+      "description": "Analysis depth: 'quick' (syntax only), 'standard', 'deep' (architecture changes)"
     }
   },
   "outputs": {

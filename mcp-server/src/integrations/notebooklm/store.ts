@@ -4,10 +4,11 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { paths } from '@elio/shared';
 import type { NotebooksStore } from './types.js';
 
-const NOTEBOOKS_PATH = '/root/.claude/notebooklm/notebooks';
-const SOURCES_PATH = '/root/.claude/notebooklm/sources';
+const NOTEBOOKS_PATH = path.join(paths.base, 'notebooklm/notebooks');
+const SOURCES_PATH = paths.data.notebooklmSources;
 
 export { NOTEBOOKS_PATH, SOURCES_PATH };
 
@@ -60,6 +61,6 @@ Usage:
 4. Export sources for NotebookLM import
 5. Generate analysis prompts for Claude
 
-Data is stored at: /root/.claude/notebooklm/
+Data is stored at: ${paths.base}/notebooklm/
 `;
 }

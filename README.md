@@ -47,7 +47,7 @@ Personal AI assistant that orchestrates skills, workflows, and integrations to a
 
 ```bash
 # Clone
-git clone git@github.com:pavelpapin/elio-os.git
+git clone <your-repo-url>
 cd elio-os
 
 # Install dependencies
@@ -56,6 +56,9 @@ cd mcp-server && npm install && npm run build
 # Configure secrets
 cp secrets/example.json secrets/google-token.json
 # Add your API keys
+
+# Create context files from templates
+cp context/_templates/* context/
 
 # Run MCP server
 node dist/index.js

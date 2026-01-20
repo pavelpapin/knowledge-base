@@ -4,6 +4,7 @@
   "description": "Elio OS - AI Operating System",
   "private": true,
   "workspaces": [
+    "core",
     "mcp-server",
     "elio",
     "gtd",

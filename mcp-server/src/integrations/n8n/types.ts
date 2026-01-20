@@ -2,10 +2,8 @@
  * n8n Integration Types
  */
 
-export interface N8nCredentials {
-  base_url: string;           // e.g., https://n8n.example.com or http://localhost:5678
-  api_key: string;            // n8n API key
-}
+// Re-export from shared credentials
+export type { N8nCredentials } from '../../utils/credentials.js';
 
 export interface N8nWorkflow {
   id: string;

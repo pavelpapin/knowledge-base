@@ -1,0 +1,373 @@
+     1→/**
+     2→ * Notion Integration
+     3→ * Read/write databases, pages, and blocks
+     4→ */
+     5→
+     6→import * as fs from 'fs';
+     7→import * as https from 'https';
+     8→
+     9→const CREDENTIALS_PATH = '/root/.claude/secrets/notion-token.json';
+    10→const NOTION_VERSION = '2022-06-28';
+    11→
+    12→interface NotionCredentials {
+    13→  api_key: string;
+    14→}
+    15→
+    16→interface NotionPage {
+    17→  id: string;
+    18→  title: string;
+    19→  url: string;
+    20→  createdTime: string;
+    21→  lastEditedTime: string;
+    22→  properties: Record<string, unknown>;
+    23→}
+    24→
+    25→interface NotionDatabase {
+    26→  id: string;
+    27→  title: string;
+    28→  url: string;
+    29→  properties: Record<string, { type: string; name: string }>;
+    30→}
+    31→
+    32→interface NotionBlock {
+    33→  id: string;
+    34→  type: string;
+    35→  content: string;
+    36→}
+    37→
+    38→function loadCredentials(): NotionCredentials | null {
+    39→  if (!fs.existsSync(CREDENTIALS_PATH)) {
+    40→    return null;
+    41→  }
+    42→  return JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf-8'));
+    43→}
+    44→
+    45→async function notionRequest(
+    46→  endpoint: string,
+    47→  method = 'GET',
+    48→  body?: unknown
+    49→): Promise<unknown> {
+    50→  const credentials = loadCredentials();
+    51→  if (!credentials) {
+    52→    throw new Error('Notion not authenticated. Add api_key to /root/.claude/secrets/notion-token.json');
+    53→  }
+    54→
+    55→  return new Promise((resolve, reject) => {
+    56→    const options: https.RequestOptions = {
+    57→      hostname: 'api.notion.com',
+    58→      path: `/v1${endpoint}`,
+    59→      method,
+    60→      headers: {
+    61→        'Authorization': `Bearer ${credentials.api_key}`,
+    62→        'Notion-Version': NOTION_VERSION,
+    63→        'Content-Type': 'application/json'
+    64→      }
+    65→    };
+    66→
+    67→    const req = https.request(options, (res) => {
+    68→      let data = '';
+    69→      res.on('data', chunk => data += chunk);
+    70→      res.on('end', () => {
+    71→        try {
+    72→          const json = JSON.parse(data);
+    73→          if (json.object === 'error') {
+    74→            reject(new Error(json.message));
+    75→          } else {
+    76→            resolve(json);
+    77→          }
+    78→        } catch {
+    79→          resolve(data);
+    80→        }
+    81→      });
+    82→    });
+    83→
+    84→    req.on('error', reject);
+    85→    if (body) {
+    86→      req.write(JSON.stringify(body));
+    87→    }
+    88→    req.end();
+    89→  });
+    90→}
+    91→
+    92→function extractTitle(properties: Record<string, unknown>): string {
+    93→  for (const [, value] of Object.entries(properties)) {
+    94→    const prop = value as Record<string, unknown>;
+    95→    if (prop.type === 'title' && Array.isArray(prop.title)) {
+    96→      return prop.title.map((t: { plain_text: string }) => t.plain_text).join('');
+    97→    }
+    98→  }
+    99→  return '(untitled)';
+   100→}
+   101→
+   102→function extractPlainText(richText: Array<{ plain_text: string }>): string {
+   103→  return richText.map(t => t.plain_text).join('');
+   104→}
+   105→
+   106→// Database operations
+   107→
+   108→export async function listDatabases(): Promise<NotionDatabase[]> {
+   109→  const response = await notionRequest('/search', 'POST', {
+   110→    filter: { property: 'object', value: 'database' },
+   111→    page_size: 100
+   112→  }) as { results: Array<{
+   113→    id: string;
+   114→    url: string;
+   115→    title: Array<{ plain_text: string }>;
+   116→    properties: Record<string, { type: string; name: string }>;
+   117→  }> };
+   118→
+   119→  return response.results.map(db => ({
+   120→    id: db.id,
+   121→    title: db.title?.map(t => t.plain_text).join('') || '(untitled)',
+   122→    url: db.url,
+   123→    properties: db.properties
+   124→  }));
+   125→}
+   126→
+   127→export async function queryDatabase(
+   128→  databaseId: string,
+   129→  filter?: Record<string, unknown>,
+   130→  sorts?: Array<{ property: string; direction: 'ascending' | 'descending' }>
+   131→): Promise<NotionPage[]> {
+   132→  const body: Record<string, unknown> = { page_size: 100 };
+   133→  if (filter) body.filter = filter;
+   134→  if (sorts) body.sorts = sorts;
+   135→
+   136→  const response = await notionRequest(
+   137→    `/databases/${databaseId}/query`,
+   138→    'POST',
+   139→    body
+   140→  ) as { results: Array<{
+   141→    id: string;
+   142→    url: string;
+   143→    created_time: string;
+   144→    last_edited_time: string;
+   145→    properties: Record<string, unknown>;
+   146→  }> };
+   147→
+   148→  return response.results.map(page => ({
+   149→    id: page.id,
+   150→    title: extractTitle(page.properties),
+   151→    url: page.url,
+   152→    createdTime: page.created_time,
+   153→    lastEditedTime: page.last_edited_time,
+   154→    properties: page.properties
+   155→  }));
+   156→}
+   157→
+   158→export async function getDatabase(databaseId: string): Promise<NotionDatabase> {
+   159→  const db = await notionRequest(`/databases/${databaseId}`) as {
+   160→    id: string;
+   161→    url: string;
+   162→    title: Array<{ plain_text: string }>;
+   163→    properties: Record<string, { type: string; name: string }>;
+   164→  };
+   165→
+   166→  return {
+   167→    id: db.id,
+   168→    title: db.title?.map(t => t.plain_text).join('') || '(untitled)',
+   169→    url: db.url,
+   170→    properties: db.properties
+   171→  };
+   172→}
+   173→
+   174→// Page operations
+   175→
+   176→export async function getPage(pageId: string): Promise<NotionPage> {
+   177→  const page = await notionRequest(`/pages/${pageId}`) as {
+   178→    id: string;
+   179→    url: string;
+   180→    created_time: string;
+   181→    last_edited_time: string;
+   182→    properties: Record<string, unknown>;
+   183→  };
+   184→
+   185→  return {
+   186→    id: page.id,
+   187→    title: extractTitle(page.properties),
+   188→    url: page.url,
+   189→    createdTime: page.created_time,
+   190→    lastEditedTime: page.last_edited_time,
+   191→    properties: page.properties
+   192→  };
+   193→}
+   194→
+   195→export async function createPage(
+   196→  databaseId: string,
+   197→  properties: Record<string, unknown>
+   198→): Promise<NotionPage> {
+   199→  const page = await notionRequest('/pages', 'POST', {
+   200→    parent: { database_id: databaseId },
+   201→    properties
+   202→  }) as {
+   203→    id: string;
+   204→    url: string;
+   205→    created_time: string;
+   206→    last_edited_time: string;
+   207→    properties: Record<string, unknown>;
+   208→  };
+   209→
+   210→  return {
+   211→    id: page.id,
+   212→    title: extractTitle(page.properties),
+   213→    url: page.url,
+   214→    createdTime: page.created_time,
+   215→    lastEditedTime: page.last_edited_time,
+   216→    properties: page.properties
+   217→  };
+   218→}
+   219→
+   220→export async function updatePage(
+   221→  pageId: string,
+   222→  properties: Record<string, unknown>
+   223→): Promise<NotionPage> {
+   224→  const page = await notionRequest(`/pages/${pageId}`, 'PATCH', {
+   225→    properties
+   226→  }) as {
+   227→    id: string;
+   228→    url: string;
+   229→    created_time: string;
+   230→    last_edited_time: string;
+   231→    properties: Record<string, unknown>;
+   232→  };
+   233→
+   234→  return {
+   235→    id: page.id,
+   236→    title: extractTitle(page.properties),
+   237→    url: page.url,
+   238→    createdTime: page.created_time,
+   239→    lastEditedTime: page.last_edited_time,
+   240→    properties: page.properties
+   241→  };
+   242→}
+   243→
+   244→// Block operations
+   245→
+   246→export async function getBlocks(pageId: string): Promise<NotionBlock[]> {
+   247→  const response = await notionRequest(`/blocks/${pageId}/children`) as {
+   248→    results: Array<{
+   249→      id: string;
+   250→      type: string;
+   251→      [key: string]: unknown;
+   252→    }>;
+   253→  };
+   254→
+   255→  return response.results.map(block => {
+   256→    const blockContent = block[block.type] as { rich_text?: Array<{ plain_text: string }> };
+   257→    let content = '';
+   258→
+   259→    if (blockContent?.rich_text) {
+   260→      content = extractPlainText(blockContent.rich_text);
+   261→    }
+   262→
+   263→    return {
+   264→      id: block.id,
+   265→      type: block.type,
+   266→      content
+   267→    };
+   268→  });
+   269→}
+   270→
+   271→export async function appendBlock(
+   272→  pageId: string,
+   273→  content: string,
+   274→  type: 'paragraph' | 'heading_1' | 'heading_2' | 'heading_3' | 'bulleted_list_item' | 'numbered_list_item' | 'to_do' = 'paragraph'
+   275→): Promise<NotionBlock> {
+   276→  const block: Record<string, unknown> = {
+   277→    object: 'block',
+   278→    type,
+   279→    [type]: {
+   280→      rich_text: [{ type: 'text', text: { content } }]
+   281→    }
+   282→  };
+   283→
+   284→  if (type === 'to_do') {
+   285→    (block[type] as Record<string, unknown>).checked = false;
+   286→  }
+   287→
+   288→  const response = await notionRequest(`/blocks/${pageId}/children`, 'PATCH', {
+   289→    children: [block]
+   290→  }) as { results: Array<{ id: string; type: string }> };
+   291→
+   292→  return {
+   293→    id: response.results[0].id,
+   294→    type: response.results[0].type,
+   295→    content
+   296→  };
+   297→}
+   298→
+   299→// Search
+   300→
+   301→export async function search(query: string, filter?: 'page' | 'database'): Promise<Array<NotionPage | NotionDatabase>> {
+   302→  const body: Record<string, unknown> = {
+   303→    query,
+   304→    page_size: 20
+   305→  };
+   306→
+   307→  if (filter) {
+   308→    body.filter = { property: 'object', value: filter };
+   309→  }
+   310→
+   311→  const response = await notionRequest('/search', 'POST', body) as {
+   312→    results: Array<{
+   313→      object: string;
+   314→      id: string;
+   315→      url: string;
+   316→      created_time?: string;
+   317→      last_edited_time?: string;
+   318→      title?: Array<{ plain_text: string }>;
+   319→      properties?: Record<string, unknown>;
+   320→    }>;
+   321→  };
+   322→
+   323→  return response.results.map(item => {
+   324→    if (item.object === 'database') {
+   325→      return {
+   326→        id: item.id,
+   327→        title: item.title?.map(t => t.plain_text).join('') || '(untitled)',
+   328→        url: item.url,
+   329→        properties: item.properties || {}
+   330→      } as NotionDatabase;
+   331→    } else {
+   332→      return {
+   333→        id: item.id,
+   334→        title: extractTitle(item.properties || {}),
+   335→        url: item.url,
+   336→        createdTime: item.created_time || '',
+   337→        lastEditedTime: item.last_edited_time || '',
+   338→        properties: item.properties || {}
+   339→      } as NotionPage;
+   340→    }
+   341→  });
+   342→}
+   343→
+   344→export function isAuthenticated(): boolean {
+   345→  return loadCredentials() !== null;
+   346→}
+   347→
+   348→// Helper to create property values
+   349→export const propertyHelpers = {
+   350→  title: (text: string) => ({
+   351→    title: [{ text: { content: text } }]
+   352→  }),
+   353→  richText: (text: string) => ({
+   354→    rich_text: [{ text: { content: text } }]
+   355→  }),
+   356→  number: (num: number) => ({ number: num }),
+   357→  select: (name: string) => ({ select: { name } }),
+   358→  multiSelect: (names: string[]) => ({
+   359→    multi_select: names.map(name => ({ name }))
+   360→  }),
+   361→  date: (start: string, end?: string) => ({
+   362→    date: { start, end }
+   363→  }),
+   364→  checkbox: (checked: boolean) => ({ checkbox: checked }),
+   365→  url: (url: string) => ({ url }),
+   366→  email: (email: string) => ({ email }),
+   367→  phone: (phone: string) => ({ phone_number: phone })
+   368→};
+   369→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>

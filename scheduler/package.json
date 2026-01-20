@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@elio/shared": "*",
     "croner": "^9.0.0"
   },
   "devDependencies": {

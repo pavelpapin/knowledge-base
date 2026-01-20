@@ -4,8 +4,9 @@
 
 import { promises as fs } from 'fs';
 import { existsSync } from 'fs';
+import { paths } from '@elio/shared';
 
-const SECRETS_DIR = process.env.SECRETS_DIR || '/root/.claude/secrets';
+const SECRETS_DIR = paths.secrets;
 
 export interface GoogleToken {
   access_token: string;
@@ -32,8 +33,10 @@ export interface PerplexityCredentials {
 }
 
 export interface LinkedInCredentials {
-  proxycurl_key?: string;
-  rapidapi_key?: string;
+  li_at?: string;           // LinkedIn session cookie
+  jsessionid?: string;      // JSESSIONID cookie
+  rapidapi_key?: string;    // RapidAPI key for LinkedIn API
+  proxycurl_key?: string;   // Proxycurl API key
 }
 
 export interface N8nCredentials {

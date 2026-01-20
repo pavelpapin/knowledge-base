@@ -5,9 +5,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
+import { paths } from '@elio/shared';
 import { SkillMetadata, SkillResult } from './types.js';
+import { createLogger } from './utils/logger.js';
 
-const SKILLS_DIR = '/root/.claude/skills';
+const logger = createLogger('skills');
+
+const SKILLS_DIR = paths.skills;
 
 export function loadSkills(): Map<string, SkillMetadata> {
   const skills = new Map<string, SkillMetadata>();
@@ -29,7 +33,7 @@ export function loadSkills(): Map<string, SkillMetadata> {
         ) as SkillMetadata;
         skills.set(dir, metadata);
       } catch {
-        console.error(`Failed to load skill: ${dir}`);
+        logger.warn(`Failed to load skill: ${dir}`);
       }
     }
   }

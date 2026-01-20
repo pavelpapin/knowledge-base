@@ -80,7 +80,7 @@
   {soft_cta}
 
   Best,
-  Pasha
+  {your_name}
   ```
 
 - **Style**: context/writing-style.md (Sales email)

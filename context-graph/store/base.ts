@@ -1,45 +1,44 @@
 /**
  * Base store operations
+ * Uses @elio/shared for storage
  */
 
-import * as fs from 'fs';
+import { createStore, paths } from '@elio/shared';
 import { GraphStore, GraphStats, Entity } from '../types.js';
 
-const STORE_PATH = '/root/.claude/context-graph/data/graph.json';
+const DEFAULT_STORE: GraphStore = {
+  entities: [],
+  relations: []
+};
+
+const store = createStore<GraphStore>(paths.data.contextGraph, DEFAULT_STORE);
 
 export function loadStore(): GraphStore {
-  if (fs.existsSync(STORE_PATH)) {
-    return JSON.parse(fs.readFileSync(STORE_PATH, 'utf-8'));
-  }
-  return { entities: [], relations: [] };
+  return store.load();
 }
 
-export function saveStore(store: GraphStore): void {
-  const dir = STORE_PATH.substring(0, STORE_PATH.lastIndexOf('/'));
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
+export function saveStore(data: GraphStore): void {
+  store.save(data);
 }
 
 export function getStats(): GraphStats {
-  const store = loadStore();
+  const data = store.load();
   const now = Date.now();
   const dayAgo = now - 24 * 60 * 60 * 1000;
 
   return {
-    totalEntities: store.entities.length,
-    people: store.entities.filter((e: Entity) => e.type === 'person').length,
-    companies: store.entities.filter((e: Entity) => e.type === 'company').length,
-    projects: store.entities.filter((e: Entity) => e.type === 'project').length,
-    topics: store.entities.filter((e: Entity) => e.type === 'topic').length,
-    totalRelations: store.relations.length,
-    recentlyMentioned: store.entities.filter((e: Entity) =>
+    totalEntities: data.entities.length,
+    people: data.entities.filter((e: Entity) => e.type === 'person').length,
+    companies: data.entities.filter((e: Entity) => e.type === 'company').length,
+    projects: data.entities.filter((e: Entity) => e.type === 'project').length,
+    topics: data.entities.filter((e: Entity) => e.type === 'topic').length,
+    totalRelations: data.relations.length,
+    recentlyMentioned: data.entities.filter((e: Entity) =>
       e.lastMentioned && new Date(e.lastMentioned).getTime() > dayAgo
     ).length
   };
 }
 
 export function exportGraph(): GraphStore {
-  return loadStore();
+  return store.load();
 }

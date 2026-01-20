@@ -66,3 +66,19 @@ todos/
 
 # Connectors with credentials
 connectors/
+
+# Private data (symlinks to ~/.elio-private/)
+context/profile.md
+context/preferences.md
+context/philosophy.md
+context/writing-style.md
+context/people/*
+context/companies/*
+context/projects/*
+secrets
+
+# Jobs with personal data
+jobs/*.json
+
+# Logs
+logs/

@@ -1,0 +1,139 @@
+     1→/**
+     2→ * Shared credential loading utilities
+     3→ */
+     4→
+     5→import { promises as fs } from 'fs';
+     6→import { existsSync } from 'fs';
+     7→
+     8→const SECRETS_DIR = process.env.SECRETS_DIR || '/root/.claude/secrets';
+     9→
+    10→export interface GoogleToken {
+    11→  access_token: string;
+    12→  refresh_token: string;
+    13→  expiry_date: number;
+    14→}
+    15→
+    16→export interface TelegramCredentials {
+    17→  bot_token: string;
+    18→  default_chat_id?: string;
+    19→}
+    20→
+    21→export interface SlackCredentials {
+    22→  bot_token: string;
+    23→  default_channel?: string;
+    24→}
+    25→
+    26→export interface NotionCredentials {
+    27→  api_key: string;
+    28→}
+    29→
+    30→export interface PerplexityCredentials {
+    31→  api_key: string;
+    32→}
+    33→
+    34→export interface LinkedInCredentials {
+    35→  proxycurl_key?: string;
+    36→  rapidapi_key?: string;
+    37→}
+    38→
+    39→export interface N8nCredentials {
+    40→  base_url: string;
+    41→  api_key?: string;
+    42→}
+    43→
+    44→/**
+    45→ * Load credentials from a JSON file synchronously (for init)
+    46→ */
+    47→export function loadCredentialsSync<T>(filename: string): T | null {
+    48→  const path = `${SECRETS_DIR}/${filename}`;
+    49→  if (!existsSync(path)) {
+    50→    return null;
+    51→  }
+    52→  try {
+    53→    const content = require('fs').readFileSync(path, 'utf-8');
+    54→    return JSON.parse(content) as T;
+    55→  } catch {
+    56→    return null;
+    57→  }
+    58→}
+    59→
+    60→/**
+    61→ * Load credentials from a JSON file asynchronously
+    62→ */
+    63→export async function loadCredentials<T>(filename: string): Promise<T | null> {
+    64→  const path = `${SECRETS_DIR}/${filename}`;
+    65→  try {
+    66→    const content = await fs.readFile(path, 'utf-8');
+    67→    return JSON.parse(content) as T;
+    68→  } catch {
+    69→    return null;
+    70→  }
+    71→}
+    72→
+    73→/**
+    74→ * Check if credentials file exists
+    75→ */
+    76→export function credentialsExist(filename: string): boolean {
+    77→  return existsSync(`${SECRETS_DIR}/${filename}`);
+    78→}
+    79→
+    80→/**
+    81→ * Get Google token
+    82→ */
+    83→export function getGoogleToken(): GoogleToken | null {
+    84→  return loadCredentialsSync<GoogleToken>('google-token.json');
+    85→}
+    86→
+    87→/**
+    88→ * Check if Google is authenticated
+    89→ */
+    90→export function isGoogleAuthenticated(): boolean {
+    91→  return credentialsExist('google-token.json');
+    92→}
+    93→
+    94→/**
+    95→ * Get Telegram credentials
+    96→ */
+    97→export function getTelegramCredentials(): TelegramCredentials | null {
+    98→  return loadCredentialsSync<TelegramCredentials>('telegram.json');
+    99→}
+   100→
+   101→/**
+   102→ * Get Slack credentials
+   103→ */
+   104→export function getSlackCredentials(): SlackCredentials | null {
+   105→  return loadCredentialsSync<SlackCredentials>('slack.json');
+   106→}
+   107→
+   108→/**
+   109→ * Get Notion credentials
+   110→ */
+   111→export function getNotionCredentials(): NotionCredentials | null {
+   112→  return loadCredentialsSync<NotionCredentials>('notion.json');
+   113→}
+   114→
+   115→/**
+   116→ * Get Perplexity credentials
+   117→ */
+   118→export function getPerplexityCredentials(): PerplexityCredentials | null {
+   119→  return loadCredentialsSync<PerplexityCredentials>('perplexity.json');
+   120→}
+   121→
+   122→/**
+   123→ * Get LinkedIn credentials
+   124→ */
+   125→export function getLinkedInCredentials(): LinkedInCredentials | null {
+   126→  return loadCredentialsSync<LinkedInCredentials>('linkedin.json');
+   127→}
+   128→
+   129→/**
+   130→ * Get n8n credentials
+   131→ */
+   132→export function getN8nCredentials(): N8nCredentials | null {
+   133→  return loadCredentialsSync<N8nCredentials>('n8n.json');
+   134→}
+   135→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>

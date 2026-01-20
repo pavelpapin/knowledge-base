@@ -1,6 +1,6 @@
 /**
- * Elio MCP Server
- * Exposes skills and integrations as MCP tools for Claude
+ * Elio MCP Server v3
+ * Gateway architecture with adapters
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -9,19 +9,35 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { registerAdapter, getRegisteredTools, executeTool, getToolCount } from './gateway/index.js';
+import { adapters } from './adapters/index.js';
 import { loadSkills, runSkill } from './skills.js';
-import { INTEGRATION_TOOLS } from './tools/index.js';
+import { createLogger } from './utils/logger.js';
 
+const logger = createLogger('mcp');
+
+// Register all adapters
+for (const adapter of adapters) {
+  registerAdapter(adapter);
+}
+
+// Load skills
 const skills = loadSkills();
 
+// Create MCP server
 const server = new Server(
-  { name: 'elio-mcp-server', version: '2.0.0' },
+  { name: 'elio-mcp-server', version: '3.0.0' },
   { capabilities: { tools: {} } }
 );
 
 // List available tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   const tools = [];
+
+  // Add adapter tools via gateway
+  for (const tool of getRegisteredTools()) {
+    tools.push(tool);
+  }
 
   // Add skill-based tools
   for (const [name, metadata] of skills) {
@@ -49,15 +65,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     });
   }
 
-  // Add integration tools
-  for (const tool of INTEGRATION_TOOLS) {
-    tools.push({
-      name: `elio_${tool.name}`,
-      description: tool.description,
-      inputSchema: tool.inputSchema
-    });
-  }
-
   return { tools };
 });
 
@@ -66,59 +73,71 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const toolName = request.params.name;
   const params = request.params.arguments as Record<string, unknown> || {};
 
-  // Check for integration tools first
-  const integrationName = toolName.replace(/^elio_/, '');
-  const integrationTool = INTEGRATION_TOOLS.find(t => t.name === integrationName);
+  // Try gateway first (adapter tools)
+  const result = await executeTool(toolName, params);
 
-  if (integrationTool) {
-    try {
-      const result = await integrationTool.handler(params);
-      return {
-        content: [{ type: 'text', text: result }]
-      };
-    } catch (err) {
-      return {
-        content: [{ type: 'text', text: `Error: ${err}` }],
-        isError: true
-      };
-    }
+  if (result.status === 'success') {
+    const output = typeof result.data === 'string'
+      ? result.data
+      : JSON.stringify(result.data, null, 2);
+    return { content: [{ type: 'text', text: output }] };
   }
 
-  // Fall back to skill-based tools
-  const skillName = integrationName.replace(/_/g, '-');
-  const skill = skills.get(skillName);
-
-  if (!skill) {
+  if (result.status === 'error') {
     return {
-      content: [{ type: 'text', text: `Unknown tool: ${toolName}` }],
+      content: [{ type: 'text', text: `Error: ${result.error}` }],
       isError: true
     };
   }
 
-  // Convert args to array based on skill inputs
-  const args: string[] = [];
-
-  for (const inputName of Object.keys(skill.inputs)) {
-    if (params[inputName] !== undefined) {
-      args.push(String(params[inputName]));
-    }
+  if (result.status === 'rate_limited') {
+    return {
+      content: [{ type: 'text', text: `Rate limited. Retry after ${result.retryAfter}ms` }],
+      isError: true
+    };
   }
 
-  const result = await runSkill(skillName, args);
+  // If blocked (unknown tool), try skills
+  if (result.status === 'blocked') {
+    const skillName = toolName.replace(/^elio_/, '').replace(/_/g, '-');
+    const skill = skills.get(skillName);
 
-  if (result.success) {
+    if (!skill) {
+      return {
+        content: [{ type: 'text', text: `Unknown tool: ${toolName}` }],
+        isError: true
+      };
+    }
+
+    // Convert args to array based on skill inputs
+    const args: string[] = [];
+    for (const inputName of Object.keys(skill.inputs)) {
+      if (params[inputName] !== undefined) {
+        args.push(String(params[inputName]));
+      }
+    }
+
+    const skillResult = await runSkill(skillName, args);
+
+    if (skillResult.success) {
+      return {
+        content: [{
+          type: 'text',
+          text: typeof skillResult.output === 'string'
+            ? skillResult.output
+            : JSON.stringify(skillResult.output, null, 2)
+        }]
+      };
+    }
+
     return {
-      content: [{
-        type: 'text',
-        text: typeof result.output === 'string'
-          ? result.output
-          : JSON.stringify(result.output, null, 2)
-      }]
+      content: [{ type: 'text', text: `Error: ${skillResult.error}` }],
+      isError: true
     };
   }
 
   return {
-    content: [{ type: 'text', text: `Error: ${result.error}` }],
+    content: [{ type: 'text', text: 'Unexpected error' }],
     isError: true
   };
 });
@@ -127,7 +146,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('Elio MCP Server v2.0 running with', INTEGRATION_TOOLS.length, 'integration tools');
+  logger.info(`Elio MCP Server v3.0 running with ${getToolCount()} gateway tools + ${skills.size} skills`);
 }
 
-main().catch(console.error);
+main().catch(err => logger.error('Server failed to start', err));

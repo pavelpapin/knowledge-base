@@ -1,0 +1,116 @@
+     1→/**
+     2→ * Shared HTTP client utilities
+     3→ */
+     4→
+     5→import * as https from 'https';
+     6→
+     7→export interface HttpRequestOptions {
+     8→  hostname: string;
+     9→  path: string;
+    10→  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+    11→  headers?: Record<string, string>;
+    12→  body?: unknown;
+    13→  timeout?: number;
+    14→}
+    15→
+    16→export class HttpError extends Error {
+    17→  constructor(
+    18→    message: string,
+    19→    public statusCode?: number,
+    20→    public response?: unknown
+    21→  ) {
+    22→    super(message);
+    23→    this.name = 'HttpError';
+    24→  }
+    25→}
+    26→
+    27→/**
+    28→ * Make an HTTPS request and return parsed JSON response
+    29→ */
+    30→export async function httpRequest<T>(options: HttpRequestOptions): Promise<T> {
+    31→  return new Promise((resolve, reject) => {
+    32→    const reqOptions: https.RequestOptions = {
+    33→      hostname: options.hostname,
+    34→      path: options.path,
+    35→      method: options.method || 'GET',
+    36→      headers: {
+    37→        'Content-Type': 'application/json',
+    38→        ...options.headers,
+    39→      },
+    40→      timeout: options.timeout || 30000,
+    41→    };
+    42→
+    43→    const req = https.request(reqOptions, (res) => {
+    44→      let data = '';
+    45→      res.on('data', (chunk) => (data += chunk));
+    46→      res.on('end', () => {
+    47→        try {
+    48→          const json = JSON.parse(data);
+    49→          if (json.error) {
+    50→            reject(new HttpError(json.error.message || JSON.stringify(json.error), res.statusCode, json));
+    51→          } else {
+    52→            resolve(json as T);
+    53→          }
+    54→        } catch {
+    55→          // Not JSON, return as string
+    56→          resolve(data as unknown as T);
+    57→        }
+    58→      });
+    59→    });
+    60→
+    61→    req.on('error', (err) => reject(new HttpError(err.message)));
+    62→    req.on('timeout', () => {
+    63→      req.destroy();
+    64→      reject(new HttpError('Request timeout'));
+    65→    });
+    66→
+    67→    if (options.body) {
+    68→      req.write(JSON.stringify(options.body));
+    69→    }
+    70→    req.end();
+    71→  });
+    72→}
+    73→
+    74→/**
+    75→ * Make a Google API request with authentication
+    76→ */
+    77→export async function googleApiRequest<T>(
+    78→  service: string,
+    79→  endpoint: string,
+    80→  accessToken: string,
+    81→  options: Partial<HttpRequestOptions> = {}
+    82→): Promise<T> {
+    83→  const hostname = service === 'drive'
+    84→    ? 'www.googleapis.com'
+    85→    : `${service}.googleapis.com`;
+    86→
+    87→  const path = service === 'drive'
+    88→    ? `/drive/v3${endpoint}`
+    89→    : `/v1${endpoint}`;
+    90→
+    91→  return httpRequest<T>({
+    92→    hostname,
+    93→    path,
+    94→    headers: {
+    95→      Authorization: `Bearer ${accessToken}`,
+    96→      ...options.headers,
+    97→    },
+    98→    ...options,
+    99→  });
+   100→}
+   101→
+   102→/**
+   103→ * Build URL query string from params
+   104→ */
+   105→export function buildQueryString(params: Record<string, string | number | boolean | undefined>): string {
+   106→  const filtered = Object.entries(params)
+   107→    .filter(([, v]) => v !== undefined)
+   108→    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+   109→
+   110→  return filtered.length > 0 ? `?${filtered.join('&')}` : '';
+   111→}
+   112→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>

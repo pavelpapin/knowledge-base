@@ -1,0 +1,138 @@
+     1→/**
+     2→ * Elio MCP Server
+     3→ * Exposes skills and integrations as MCP tools for Claude
+     4→ */
+     5→
+     6→import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+     7→import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+     8→import {
+     9→  CallToolRequestSchema,
+    10→  ListToolsRequestSchema,
+    11→} from '@modelcontextprotocol/sdk/types.js';
+    12→import { loadSkills, runSkill } from './skills.js';
+    13→import { INTEGRATION_TOOLS } from './tools.js';
+    14→
+    15→const skills = loadSkills();
+    16→
+    17→const server = new Server(
+    18→  { name: 'elio-mcp-server', version: '2.0.0' },
+    19→  { capabilities: { tools: {} } }
+    20→);
+    21→
+    22→// List available tools
+    23→server.setRequestHandler(ListToolsRequestSchema, async () => {
+    24→  const tools = [];
+    25→
+    26→  // Add skill-based tools
+    27→  for (const [name, metadata] of skills) {
+    28→    const inputSchema: Record<string, unknown> = {
+    29→      type: 'object',
+    30→      properties: {} as Record<string, unknown>,
+    31→      required: [] as string[]
+    32→    };
+    33→
+    34→    for (const [inputName, input] of Object.entries(metadata.inputs)) {
+    35→      (inputSchema.properties as Record<string, unknown>)[inputName] = {
+    36→        type: input.type,
+    37→        description: input.description,
+    38→        default: input.default
+    39→      };
+    40→      if (input.required) {
+    41→        (inputSchema.required as string[]).push(inputName);
+    42→      }
+    43→    }
+    44→
+    45→    tools.push({
+    46→      name: `elio_${name.replace(/-/g, '_')}`,
+    47→      description: metadata.description,
+    48→      inputSchema
+    49→    });
+    50→  }
+    51→
+    52→  // Add integration tools
+    53→  for (const tool of INTEGRATION_TOOLS) {
+    54→    tools.push({
+    55→      name: `elio_${tool.name}`,
+    56→      description: tool.description,
+    57→      inputSchema: tool.inputSchema
+    58→    });
+    59→  }
+    60→
+    61→  return { tools };
+    62→});
+    63→
+    64→// Execute tools
+    65→server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    66→  const toolName = request.params.name;
+    67→  const params = request.params.arguments as Record<string, unknown> || {};
+    68→
+    69→  // Check for integration tools first
+    70→  const integrationName = toolName.replace(/^elio_/, '');
+    71→  const integrationTool = INTEGRATION_TOOLS.find(t => t.name === integrationName);
+    72→
+    73→  if (integrationTool) {
+    74→    try {
+    75→      const result = await integrationTool.handler(params);
+    76→      return {
+    77→        content: [{ type: 'text', text: result }]
+    78→      };
+    79→    } catch (err) {
+    80→      return {
+    81→        content: [{ type: 'text', text: `Error: ${err}` }],
+    82→        isError: true
+    83→      };
+    84→    }
+    85→  }
+    86→
+    87→  // Fall back to skill-based tools
+    88→  const skillName = integrationName.replace(/_/g, '-');
+    89→  const skill = skills.get(skillName);
+    90→
+    91→  if (!skill) {
+    92→    return {
+    93→      content: [{ type: 'text', text: `Unknown tool: ${toolName}` }],
+    94→      isError: true
+    95→    };
+    96→  }
+    97→
+    98→  // Convert args to array based on skill inputs
+    99→  const args: string[] = [];
+   100→
+   101→  for (const inputName of Object.keys(skill.inputs)) {
+   102→    if (params[inputName] !== undefined) {
+   103→      args.push(String(params[inputName]));
+   104→    }
+   105→  }
+   106→
+   107→  const result = await runSkill(skillName, args);
+   108→
+   109→  if (result.success) {
+   110→    return {
+   111→      content: [{
+   112→        type: 'text',
+   113→        text: typeof result.output === 'string'
+   114→          ? result.output
+   115→          : JSON.stringify(result.output, null, 2)
+   116→      }]
+   117→    };
+   118→  }
+   119→
+   120→  return {
+   121→    content: [{ type: 'text', text: `Error: ${result.error}` }],
+   122→    isError: true
+   123→  };
+   124→});
+   125→
+   126→// Start server
+   127→async function main() {
+   128→  const transport = new StdioServerTransport();
+   129→  await server.connect(transport);
+   130→  console.error('Elio MCP Server v2.0 running with', INTEGRATION_TOOLS.length, 'integration tools');
+   131→}
+   132→
+   133→main().catch(console.error);
+   134→
+
+<system-reminder>
+Whenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.
+</system-reminder>

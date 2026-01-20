@@ -7,11 +7,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { Cron } from 'croner';
+import { paths } from '@elio/shared';
 import { ScheduledJob, SchedulerConfig, JobResult } from './types.js';
 import { executeJob } from './executor.js';
 
-const CONFIG_PATH = '/root/.claude/scheduler/jobs.json';
-const LOG_PATH = '/root/.claude/scheduler/logs';
+const CONFIG_PATH = paths.data.scheduler;
+const LOG_PATH = paths.logs.scheduler;
 
 class Scheduler {
   private jobs: Map<string, Cron> = new Map();

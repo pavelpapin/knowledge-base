@@ -1,33 +1,33 @@
 /**
  * Base store operations
+ * Uses @elio/shared for storage
  */
 
-import * as fs from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { createStore, paths } from '@elio/shared';
 import { ImprovementStore, Correction } from '../types.js';
 
-const STORE_PATH = '/root/.claude/self-improvement/data/store.json';
-const CLAUDE_MD_PATH = '/root/.claude/CLAUDE.md';
+const DEFAULT_STORE: ImprovementStore = {
+  corrections: [],
+  patterns: []
+};
 
-export { STORE_PATH, CLAUDE_MD_PATH };
+const store = createStore<ImprovementStore>(paths.data.selfImprovement, DEFAULT_STORE);
+
+export const STORE_PATH = paths.data.selfImprovement;
+export const CLAUDE_MD_PATH = paths.claudeMd;
 
 export function loadStore(): ImprovementStore {
-  if (fs.existsSync(STORE_PATH)) {
-    return JSON.parse(fs.readFileSync(STORE_PATH, 'utf-8'));
-  }
-  return { corrections: [], patterns: [] };
+  return store.load();
 }
 
-export function saveStore(store: ImprovementStore): void {
-  const dir = STORE_PATH.substring(0, STORE_PATH.lastIndexOf('/'));
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
+export function saveStore(data: ImprovementStore): void {
+  store.save(data);
 }
 
 export function readClaudeMd(): string {
-  if (fs.existsSync(CLAUDE_MD_PATH)) {
-    return fs.readFileSync(CLAUDE_MD_PATH, 'utf-8');
+  if (existsSync(CLAUDE_MD_PATH)) {
+    return readFileSync(CLAUDE_MD_PATH, 'utf-8');
   }
   return '';
 }
@@ -44,10 +44,10 @@ export function appendToClaudeMd(section: string, content: string): boolean {
       : claudeMd.length;
 
     const updated = claudeMd.substring(0, insertIndex) + '\n' + content + claudeMd.substring(insertIndex);
-    fs.writeFileSync(CLAUDE_MD_PATH, updated);
+    writeFileSync(CLAUDE_MD_PATH, updated);
   } else {
     const updated = claudeMd + `\n\n${sectionHeader}\n${content}`;
-    fs.writeFileSync(CLAUDE_MD_PATH, updated);
+    writeFileSync(CLAUDE_MD_PATH, updated);
   }
 
   return true;
@@ -59,18 +59,19 @@ export function getStats(): {
   patterns: number;
   lastAnalysis?: string;
 } {
-  const store = loadStore();
+  const data = store.load();
 
   return {
-    totalCorrections: store.corrections.length,
-    unappliedCorrections: store.corrections.filter((c: Correction) => !c.applied).length,
-    patterns: store.patterns.length,
-    lastAnalysis: store.lastAnalysis
+    totalCorrections: data.corrections.length,
+    unappliedCorrections: data.corrections.filter((c: Correction) => !c.applied).length,
+    patterns: data.patterns.length,
+    lastAnalysis: data.lastAnalysis
   };
 }
 
 export function setLastAnalysis(): void {
-  const store = loadStore();
-  store.lastAnalysis = new Date().toISOString();
-  saveStore(store);
+  store.update(current => ({
+    ...current,
+    lastAnalysis: new Date().toISOString()
+  }));
 }

@@ -3,14 +3,17 @@
  */
 
 import * as https from 'https';
+import * as http from 'http';
 
 export interface HttpRequestOptions {
   hostname: string;
+  port?: number;
   path: string;
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   headers?: Record<string, string>;
   body?: unknown;
   timeout?: number;
+  protocol?: 'http' | 'https';
 }
 
 export class HttpError extends Error {
@@ -25,15 +28,18 @@ export class HttpError extends Error {
 }
 
 /**
- * Make an HTTPS request and return parsed JSON response
+ * Make an HTTP/HTTPS request and return parsed JSON response
  */
 export async function httpRequest<T>(options: HttpRequestOptions): Promise<T> {
   return new Promise((resolve, reject) => {
     const contentType = options.headers?.['Content-Type'] || 'application/json';
     const isFormData = contentType.includes('x-www-form-urlencoded');
+    const isHttps = options.protocol !== 'http';
+    const httpModule = isHttps ? https : http;
 
     const reqOptions: https.RequestOptions = {
       hostname: options.hostname,
+      port: options.port || (isHttps ? 443 : 80),
       path: options.path,
       method: options.method || 'GET',
       headers: {
@@ -43,7 +49,7 @@ export async function httpRequest<T>(options: HttpRequestOptions): Promise<T> {
       timeout: options.timeout || 30000,
     };
 
-    const req = https.request(reqOptions, (res) => {
+    const req = httpModule.request(reqOptions, (res) => {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {

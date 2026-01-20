@@ -284,6 +284,11 @@ check_file() {
     if [ "$todo_count" -gt 0 ]; then
         add_suggestion "$file" "maintenance" "Contains $todo_count TODO/FIXME comments"
     fi
+
+    # Export default (anti-pattern)
+    if grep -q 'export default' "$file" 2>/dev/null; then
+        add_issue "$file" 0 "medium" "standards" "Using export default - use named exports" "Convert to named export"
+    fi
 }
 
 # Main
@@ -330,10 +335,63 @@ ARCH_SCORE=100
 [ "$AVG_LINES_PER_FILE" -gt 150 ] && ARCH_SCORE=$((ARCH_SCORE - 10))
 [ "$ARCH_SCORE" -lt 0 ] && ARCH_SCORE=0
 
+# === Architecture Deep Analysis ===
+TECH_DEBT=""
+ARCH_CHANGE=""
+DATA_FLOW=""
+
+# 1. Biggest Tech Debt Analysis
+HARDCODED_PATHS=$(grep -r "'/root/.claude" /root/.claude --include="*.ts" 2>/dev/null | grep -v node_modules | grep -v dist | grep -v ".jsonl" | wc -l)
+DIRECT_FS=$(grep -r "import.*from 'fs'" /root/.claude --include="*.ts" 2>/dev/null | grep -v node_modules | grep -v dist | grep -v "core/store.ts" | wc -l)
+EXPORT_DEFAULT=$(grep -r "export default" /root/.claude --include="*.ts" 2>/dev/null | grep -v node_modules | grep -v dist | wc -l)
+NO_ERROR_HANDLING=$(grep -rn "JSON.parse" /root/.claude --include="*.ts" 2>/dev/null | grep -v node_modules | grep -v dist | grep -v "try" | wc -l)
+
+if [ "$HARDCODED_PATHS" -gt 10 ]; then
+    TECH_DEBT="Hardcoded paths ($HARDCODED_PATHS files) - use @elio/shared paths config"
+elif [ "$DIRECT_FS" -gt 10 ]; then
+    TECH_DEBT="Direct fs imports ($DIRECT_FS files) - use @elio/shared store utilities"
+elif [ "$EXPORT_DEFAULT" -gt 0 ]; then
+    TECH_DEBT="Export default usage ($EXPORT_DEFAULT files) - convert to named exports"
+elif [ "$NO_ERROR_HANDLING" -gt 5 ]; then
+    TECH_DEBT="JSON.parse without try-catch ($NO_ERROR_HANDLING places)"
+else
+    TECH_DEBT="No major tech debt detected"
+fi
+
+# 2. Most Important Architecture Change
+EVENT_SYSTEM=$(grep -r "EventEmitter\|emit\|\.on\(" /root/.claude --include="*.ts" 2>/dev/null | grep -v node_modules | grep -v dist | wc -l)
+STORE_WRITES=$(grep -rn "saveStore\|store.save\|writeFile" /root/.claude --include="*.ts" 2>/dev/null | grep -v node_modules | grep -v dist | wc -l)
+SHARED_USAGE=$(grep -r "from '@elio/shared'" /root/.claude --include="*.ts" 2>/dev/null | grep -v node_modules | grep -v dist | wc -l)
+
+if [ "$EVENT_SYSTEM" -lt 3 ] && [ "$STORE_WRITES" -gt 20 ]; then
+    ARCH_CHANGE="Add event bus - $STORE_WRITES direct store writes without notifications"
+elif [ "$SHARED_USAGE" -lt 5 ]; then
+    ARCH_CHANGE="Use @elio/shared more - only $SHARED_USAGE imports found"
+else
+    ARCH_CHANGE="Consider plugin system for extensibility"
+fi
+
+# 3. Data Flow Scalability
+COUPLED_MODULES=0
+for pkg in headless context-graph self-improvement gtd; do
+    if ! grep -q "from '@elio/shared'" "/root/.claude/$pkg"/*.ts 2>/dev/null && \
+       ! grep -q "from '@elio/shared'" "/root/.claude/$pkg"/**/*.ts 2>/dev/null; then
+        COUPLED_MODULES=$((COUPLED_MODULES + 1))
+    fi
+done
+
+if [ "$COUPLED_MODULES" -gt 2 ]; then
+    DATA_FLOW="Decouple modules - $COUPLED_MODULES packages not using shared utilities"
+elif [ "$EVENT_SYSTEM" -lt 3 ]; then
+    DATA_FLOW="Implement pub/sub pattern for cross-module communication"
+else
+    DATA_FLOW="Consider async message queue for heavy operations"
+fi
+
 # Output JSON
 cat << EOF
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "scope": "$SCOPE",
   "path": "$PATH_TO_CHECK",
   "files_checked": $FILES_COUNT,
@@ -351,6 +409,11 @@ cat << EOF
     "avg_lines_per_file": $AVG_LINES_PER_FILE,
     "large_files": $LARGE_FILES,
     "complex_functions": $COMPLEX_FUNCTIONS
+  },
+  "architecture_analysis": {
+    "tech_debt": "$TECH_DEBT",
+    "recommended_change": "$ARCH_CHANGE",
+    "data_flow_improvement": "$DATA_FLOW"
   },
   "vulnerabilities": {
     "critical": $VULN_CRITICAL,

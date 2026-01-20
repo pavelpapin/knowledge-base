@@ -1,10 +1,12 @@
 /**
  * LinkedIn Integration
- * Profile lookup, search, and messaging via unofficial methods
- * Note: Uses scraping/unofficial APIs - use responsibly
+ * Priority: OAuth API > Proxycurl > Scrape.do > Jina
  */
 
-import { proxycurlRequest, rapidApiRequest, isAuthenticated, getAuthInstructions } from './api.js';
+import { proxycurlRequest, rapidApiRequest, isAuthenticated as proxycurlAuth, getAuthInstructions } from './api.js';
+import * as oauth from './oauth.js';
+import * as scraper from './scraper.js';
+import { createLogger } from '../../utils/logger.js';
 import type {
   LinkedInProfile,
   LinkedInSearchResult,
@@ -16,7 +18,27 @@ import type {
 } from './types.js';
 
 export type { LinkedInProfile, LinkedInSearchResult, LinkedInCompany } from './types.js';
-export { isAuthenticated, getAuthInstructions } from './api.js';
+export { isAuthenticated as proxycurlAuth, getAuthInstructions } from './api.js';
+
+// OAuth exports
+export const startOAuth = scraper.startAuth;
+export const completeOAuth = scraper.completeAuth;
+export const getOAuthStatus = scraper.getAuthStatus;
+export const getMyProfile = scraper.getMyProfile;
+
+// Scraper exports
+export const scrapeProfile = scraper.getProfile;
+export const searchProfiles = scraper.searchProfiles;
+export const findPerson = scraper.findPerson;
+
+/**
+ * Check if any LinkedIn auth is available
+ */
+export function isAuthenticated(): boolean {
+  return oauth.isAuthenticated() || proxycurlAuth();
+}
+
+const logger = createLogger('linkedin');
 
 export async function getProfile(linkedinUrl: string): Promise<LinkedInProfile | null> {
   try {
@@ -44,7 +66,7 @@ export async function getProfile(linkedinUrl: string): Promise<LinkedInProfile |
       connections: response.connections
     };
   } catch (error) {
-    console.error('Proxycurl failed:', error);
+    logger.warn('Proxycurl failed', error);
 
     // Try RapidAPI as fallback
     try {
@@ -106,7 +128,7 @@ export async function searchPeople(
       total: response.total_result_count || profiles.length
     };
   } catch (error) {
-    console.error('LinkedIn search failed:', error);
+    logger.warn('LinkedIn search failed', error);
     return { profiles: [], total: 0 };
   }
 }
@@ -130,7 +152,7 @@ export async function searchCompanies(
       employeeCount: r.profile.company_size_on_linkedin ? String(r.profile.company_size_on_linkedin) : undefined
     }));
   } catch (error) {
-    console.error('Company search failed:', error);
+    logger.warn('Company search failed', error);
     return [];
   }
 }
@@ -160,7 +182,7 @@ export async function getCompanyEmployees(
       profileUrl: e.profile_url
     }));
   } catch (error) {
-    console.error('Employee search failed:', error);
+    logger.warn('Employee search failed', error);
     return [];
   }
 }

@@ -1,0 +1,246 @@
+The file /root/.claude/mcp-server/src/integrations/gmail.ts has been updated. Here's the result of running `cat -n` on a snippet of the edited file:
+     1→/**
+     2→ * Gmail Integration
+     3→ * Read, search, and send emails via Gmail API
+     4→ */
+     5→
+     6→import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+     7→import { httpRequest, HttpError } from '../utils/http.js';
+     8→import { getGoogleToken, loadCredentialsSync, GoogleToken } from '../utils/credentials.js';
+     9→
+    10→const CREDENTIALS_PATH = '/root/.claude/secrets/google-credentials.json';
+    11→const TOKEN_PATH = '/root/.claude/secrets/google-token.json';
+    12→
+    13→interface GoogleCredentials {
+    14→  installed?: { client_id: string; client_secret: string; redirect_uris: string[] };
+    15→  web?: { client_id: string; client_secret: string; redirect_uris: string[] };
+    16→}
+    17→
+    18→interface EmailMessage {
+    19→  id: string;
+    20→  threadId: string;
+    21→  from: string;
+    22→  to: string;
+    23→  subject: string;
+    24→  date: string;
+    25→  snippet: string;
+    26→  body?: string;
+    27→  labels: string[];
+    28→}
+    29→
+    30→function loadCredentials(): GoogleCredentials | null {
+    31→  if (!existsSync(CREDENTIALS_PATH)) return null;
+    32→  return JSON.parse(readFileSync(CREDENTIALS_PATH, 'utf-8'));
+    33→}
+    34→
+    35→function saveToken(token: GoogleToken): void {
+    36→  mkdirSync('/root/.claude/secrets', { recursive: true });
+    37→  writeFileSync(TOKEN_PATH, JSON.stringify(token, null, 2));
+    38→}
+    39→
+    40→async function refreshAccessToken(): Promise<string | null> {
+    41→  const credentials = loadCredentials();
+    42→  const token = getGoogleToken();
+    43→  if (!credentials || !token) return null;
+    44→
+    45→  const config = credentials.installed || credentials.web;
+    46→  if (!config) return null;
+    47→
+    48→  try {
+    49→    const params = new URLSearchParams({
+    50→      client_id: config.client_id,
+    51→      client_secret: config.client_secret,
+    52→      refresh_token: token.refresh_token,
+    53→      grant_type: 'refresh_token'
+    54→    });
+    55→
+    56→    const response = await httpRequest<{ access_token?: string; expires_in?: number }>({
+    57→      hostname: 'oauth2.googleapis.com',
+    58→      path: '/token',
+    59→      method: 'POST',
+    60→      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    61→      body: params.toString()
+    62→    });
+    63→
+    64→    if (response.access_token) {
+    65→      saveToken({
+    66→        ...token,
+    67→        access_token: response.access_token,
+    68→        expiry_date: Date.now() + ((response.expires_in || 3600) * 1000)
+    69→      });
+    70→      return response.access_token;
+    71→    }
+    72→    return null;
+    73→  } catch {
+    74→    return null;
+    75→  }
+    76→}
+    77→
+    78→async function getAccessToken(): Promise<string | null> {
+    79→  const token = getGoogleToken();
+    80→  if (!token) return null;
+    81→
+    82→  if (token.expiry_date && Date.now() > token.expiry_date - 60000) {
+    83→    return refreshAccessToken();
+    84→  }
+    85→  return token.access_token;
+    86→}
+    87→
+    88→async function gmailRequest<T>(endpoint: string, method = 'GET', body?: unknown): Promise<T> {
+    89→  const accessToken = await getAccessToken();
+    90→  if (!accessToken) {
+    91→    throw new HttpError('Not authenticated. Run gmail-auth to authenticate.');
+    92→  }
+    93→
+    94→  return httpRequest<T>({
+    95→    hostname: 'gmail.googleapis.com',
+    96→    path: `/gmail/v1/users/me${endpoint}`,
+    97→    method: method as 'GET' | 'POST',
+    98→    headers: { Authorization: `Bearer ${accessToken}` },
+    99→    body
+   100→  });
+   101→}
+   102→
+   103→function decodeBase64Url(str: string): string {
+   104→  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+   105→  return Buffer.from(base64, 'base64').toString('utf-8');
+   106→}
+   107→
+   108→function parseEmailHeaders(headers: Array<{ name: string; value: string }>): Record<string, string> {
+   109→  const result: Record<string, string> = {};
+   110→  for (const h of headers) {
+   111→    result[h.name.toLowerCase()] = h.value;
+   112→  }
+   113→  return result;
+   114→}
+   115→
+   116→interface GmailListResponse {
+   117→  messages?: Array<{ id: string }>;
+   118→}
+   119→
+   120→interface GmailMessageDetail {
+   121→  id: string;
+   122→  threadId: string;
+   123→  snippet: string;
+   124→  labelIds: string[];
+   125→  payload: {
+   126→    headers: Array<{ name: string; value: string }>;
+   127→    body?: { data?: string };
+   128→    parts?: Array<{ mimeType?: string; body?: { data?: string } }>;
+   129→  };
+   130→}
+   131→
+   132→export async function listEmails(query = '', maxResults = 10): Promise<EmailMessage[]> {
+   133→  const params = new URLSearchParams({ maxResults: String(maxResults) });
+   134→  if (query) params.set('q', query);
+   135→
+   136→  const response = await gmailRequest<GmailListResponse>(`/messages?${params}`);
+   137→  if (!response.messages) return [];
+   138→
+   139→  const messages: EmailMessage[] = [];
+   140→  for (const msg of response.messages.slice(0, maxResults)) {
+   141→    const detail = await gmailRequest<GmailMessageDetail>(`/messages/${msg.id}`);
+   142→    const headers = parseEmailHeaders(detail.payload.headers);
+   143→
+   144→    messages.push({
+   145→      id: detail.id,
+   146→      threadId: detail.threadId,
+   147→      from: headers['from'] || '',
+   148→      to: headers['to'] || '',
+   149→      subject: headers['subject'] || '(no subject)',
+   150→      date: headers['date'] || '',
+   151→      snippet: detail.snippet,
+   152→      labels: detail.labelIds || []
+   153→    });
+   154→  }
+   155→
+   156→  return messages;
+   157→}
+   158→
+   159→export async function getEmail(messageId: string): Promise<EmailMessage | null> {
+   160→  const detail = await gmailRequest<GmailMessageDetail>(`/messages/${messageId}?format=full`);
+   161→  if (!detail.id) return null;
+   162→
+   163→  const headers = parseEmailHeaders(detail.payload.headers);
+   164→
+   165→  let body = '';
+   166→  if (detail.payload.body?.data) {
+   167→    body = decodeBase64Url(detail.payload.body.data);
+   168→  } else if (detail.payload.parts) {
+   169→    const textPart = detail.payload.parts.find(p => p.mimeType === 'text/plain');
+   170→    if (textPart?.body?.data) {
+   171→      body = decodeBase64Url(textPart.body.data);
+   172→    }
+   173→  }
+   174→
+   175→  return {
+   176→    id: detail.id,
+   177→    threadId: detail.threadId,
+   178→    from: headers['from'] || '',
+   179→    to: headers['to'] || '',
+   180→    subject: headers['subject'] || '(no subject)',
+   181→    date: headers['date'] || '',
+   182→    snippet: detail.snippet,
+   183→    body,
+   184→    labels: detail.labelIds || []
+   185→  };
+   186→}
+   187→
+   188→interface SendResponse {
+   189→  id?: string;
+   190→  error?: { message: string };
+   191→}
+   192→
+   193→export async function sendEmail(
+   194→  to: string,
+   195→  subject: string,
+   196→  body: string
+   197→): Promise<{ success: boolean; messageId?: string; error?: string }> {
+   198→  const email = [
+   199→    `To: ${to}`,
+   200→    `Subject: ${subject}`,
+   201→    'Content-Type: text/plain; charset=utf-8',
+   202→    '',
+   203→    body
+   204→  ].join('\r\n');
+   205→
+   206→  const encodedEmail = Buffer.from(email).toString('base64url');
+   207→
+   208→  try {
+   209→    const response = await gmailRequest<SendResponse>('/messages/send', 'POST', { raw: encodedEmail });
+   210→    if (response.id) {
+   211→      return { success: true, messageId: response.id };
+   212→    }
+   213→    return { success: false, error: response.error?.message || 'Unknown error' };
+   214→  } catch (err) {
+   215→    return { success: false, error: err instanceof Error ? err.message : String(err) };
+   216→  }
+   217→}
+   218→
+   219→export async function searchEmails(query: string, maxResults = 20): Promise<EmailMessage[]> {
+   220→  return listEmails(query, maxResults);
+   221→}
+   222→
+   223→export function isAuthenticated(): boolean {
+   224→  return getGoogleToken() !== null && loadCredentials() !== null;
+   225→}
+   226→
+   227→export function getAuthUrl(): string | null {
+   228→  const credentials = loadCredentials();
+   229→  if (!credentials) return null;
+   230→
+   231→  const config = credentials.installed || credentials.web;
+   232→  if (!config) return null;
+   233→
+   234→  const params = new URLSearchParams({
+   235→    client_id: config.client_id,
+   236→    redirect_uri: config.redirect_uris[0],
+   237→    response_type: 'code',
+   238→    scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar',
+   239→    access_type: 'offline',
+   240→    prompt: 'consent'
+   241→  });
+   242→
+   243→  return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+   244→}
+   245→

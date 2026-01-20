@@ -9,5 +9,8 @@
     "start": "node dist/cli.js",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@elio/shared": "*"
   }
 }

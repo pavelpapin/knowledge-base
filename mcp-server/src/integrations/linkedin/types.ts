@@ -2,12 +2,8 @@
  * LinkedIn Integration Types
  */
 
-export interface LinkedInCredentials {
-  li_at?: string;           // LinkedIn session cookie
-  jsessionid?: string;      // JSESSIONID cookie
-  rapidapi_key?: string;    // RapidAPI key for LinkedIn API
-  proxycurl_key?: string;   // Proxycurl API key
-}
+// Re-export from shared credentials
+export type { LinkedInCredentials } from '../../utils/credentials.js';
 
 export interface LinkedInProfile {
   id: string;

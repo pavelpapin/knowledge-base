@@ -3,89 +3,51 @@
  * HTTP request helpers for Proxycurl and RapidAPI
  */
 
-import * as fs from 'fs';
-import * as https from 'https';
-import type { LinkedInCredentials } from './types.js';
+import { httpRequest, buildQueryString } from '../../utils/http.js';
+import { loadCredentialsSync, LinkedInCredentials } from '../../utils/credentials.js';
 
-const CREDENTIALS_PATH = '/root/.claude/secrets/linkedin-credentials.json';
+const CREDENTIALS_FILE = 'linkedin-credentials.json';
 
 export function loadCredentials(): LinkedInCredentials | null {
-  if (!fs.existsSync(CREDENTIALS_PATH)) {
-    return null;
-  }
-  return JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf-8'));
+  return loadCredentialsSync<LinkedInCredentials>(CREDENTIALS_FILE);
 }
 
-export async function rapidApiRequest(endpoint: string, params: Record<string, string>): Promise<unknown> {
+export async function rapidApiRequest<T = unknown>(
+  endpoint: string,
+  params: Record<string, string>
+): Promise<T> {
   const credentials = loadCredentials();
   if (!credentials?.rapidapi_key) {
     throw new Error('RapidAPI key not configured');
   }
 
-  const queryString = new URLSearchParams(params).toString();
-
-  return new Promise((resolve, reject) => {
-    const options: https.RequestOptions = {
-      hostname: 'linkedin-api8.p.rapidapi.com',
-      path: `${endpoint}?${queryString}`,
-      method: 'GET',
-      headers: {
-        'X-RapidAPI-Key': credentials.rapidapi_key,
-        'X-RapidAPI-Host': 'linkedin-api8.p.rapidapi.com'
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch {
-          resolve(data);
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.end();
+  return httpRequest<T>({
+    hostname: 'linkedin-api8.p.rapidapi.com',
+    path: `${endpoint}${buildQueryString(params)}`,
+    method: 'GET',
+    headers: {
+      'X-RapidAPI-Key': credentials.rapidapi_key,
+      'X-RapidAPI-Host': 'linkedin-api8.p.rapidapi.com'
+    }
   });
 }
 
-export async function proxycurlRequest(endpoint: string, params: Record<string, string>): Promise<unknown> {
+export async function proxycurlRequest<T = unknown>(
+  endpoint: string,
+  params: Record<string, string>
+): Promise<T> {
   const credentials = loadCredentials();
-  const apiKey = credentials?.proxycurl_key;
-
-  if (!apiKey) {
+  if (!credentials?.proxycurl_key) {
     throw new Error('Proxycurl API key not configured');
   }
 
-  const queryString = new URLSearchParams(params).toString();
-
-  return new Promise((resolve, reject) => {
-    const options: https.RequestOptions = {
-      hostname: 'nubela.co',
-      path: `/proxycurl/api${endpoint}?${queryString}`,
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch {
-          resolve(data);
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.end();
+  return httpRequest<T>({
+    hostname: 'nubela.co',
+    path: `/proxycurl/api${endpoint}${buildQueryString(params)}`,
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${credentials.proxycurl_key}`
+    }
   });
 }
 
