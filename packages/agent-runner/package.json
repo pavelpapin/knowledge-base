@@ -1,0 +1,19 @@
+{
+  "name": "@elio/agent-runner",
+  "version": "1.0.0",
+  "description": "CLI agent process management with streaming I/O",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@elio/workflow": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/node": "^22.0.0"
+  }
+}

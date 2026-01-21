@@ -6,8 +6,98 @@
 |--------|------|----------|--------|
 | Perplexity | `elio_perplexity_search` | AI-powered search | ✅ Active |
 | LinkedIn | `elio_linkedin_profile/search` | People, companies | ✅ Active |
-| YouTube | `elio_youtube_transcript` | Video transcripts | ✅ Active |
+| YouTube | `elio_youtube_transcript` | Video transcripts | ✅ Active (Supadata) |
 | Notion | `elio_notion_*` | Storage, reports | ✅ Active |
+
+---
+
+## YouTube Strategy (Token-Efficient)
+
+### Overview
+
+YouTube is a valuable but token-expensive source. We use a **smart selection strategy** to maximize value while minimizing token usage.
+
+### Selection Pipeline
+
+```
+Search (web) → Score → Filter → Transcript (top 3-5) → Extract Insights
+```
+
+### Scoring Criteria
+
+| Factor | Weight | Scoring |
+|--------|--------|---------|
+| Channel authority | 30% | TED/Google/YC = +3, Verified = +0.5, >1M subs = +1.5 |
+| Engagement | 25% | >1M views = +1.5, >100K = +1.0 |
+| Content type | 20% | Conference/keynote = 1.0, Interview = 0.9, Tutorial = 0.85 |
+| Recency | 15% | <30 days = +1.5, <180 days = +1.0 |
+| Duration | 10% | 10-60 min = +1.0, <5 min or >2h = -1.0 |
+
+### Skip Rules (Auto-Filter)
+
+- Reaction videos
+- Videos < 5 minutes
+- Videos > 2 hours
+- Old (>1 year) + low views (<1000)
+- Channels < 10K subscribers (unless verified expert)
+- Clickbait patterns in title
+
+### Token Budget
+
+```
+Per research topic:
+├── Max videos: 3-5 (based on depth)
+├── Max tokens per video: ~10,000
+├── Total YouTube budget: 50,000 tokens
+└── Extract: insights only (not full transcript)
+```
+
+### Preferred Sources
+
+**Tech/AI Topics:**
+- TED Talks
+- Google I/O, AWS re:Invent
+- Y Combinator, Sequoia Capital
+- Lex Fridman, Fireship, ThePrimeagen
+
+**Business Topics:**
+- Stanford GSB, Harvard Business Review
+- Tim Ferriss, Gary Vaynerchuk
+
+### API Details
+
+**Primary:** Supadata API (`elio_youtube_transcript`)
+- Works from cloud IPs
+- 60s timeout
+- Returns full transcript
+
+**Fallback:** youtube-transcript-api (Python)
+- May be blocked on cloud IPs
+- Used only if Supadata fails
+
+### Integration Code
+
+```typescript
+// In retrieval.ts
+import { processYoutubeVideos } from './youtube';
+
+// After web search finds video URLs:
+const sources = await processYoutubeVideos(
+  videoList,
+  topic,
+  maxVideos  // 3-5 based on depth
+);
+```
+
+### When to Use YouTube
+
+| Topic Type | Priority | Reason |
+|------------|----------|--------|
+| AI/ML | HIGH | Conference talks, demos |
+| Startups | MEDIUM | Founder interviews |
+| How-to | HIGH | Visual demonstrations |
+| Finance | LOW | Better text sources |
+| News | LOW | Outdates quickly |
 
 ---
 

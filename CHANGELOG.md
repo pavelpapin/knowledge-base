@@ -6,6 +6,53 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.2.0] - 2026-01-20
+
+### Added
+- **Worker-Based Agent Execution** - New architecture inspired by [myagent](https://github.com/serge-arbor/myagent)
+  - `@elio/workflow` - Temporal-like API for workflow orchestration using BullMQ
+  - `@elio/agent-runner` - CLI process management with streaming output
+  - `@elio/shared` - Shared paths and utilities
+  - `apps/worker` - Background workers for agent execution
+
+- **New MCP Tools for Agents**
+  - `elio_agent_start` - Start background agent workflow
+  - `elio_agent_status` - Query agent status
+  - `elio_agent_signal` - Send signals (userInput, cancel)
+  - `elio_agent_cancel` - Cancel running agent
+
+- **BullMQ + Redis Infrastructure**
+  - Redis Streams for real-time output
+  - Redis PubSub for signals
+  - Redis hashes for workflow state
+  - `docker-compose.yml` with Redis service
+
+- **AgentNotificationService**
+  - Debounced notifications to Telegram
+  - Input request notifications
+  - Progress updates
+
+- **Structured Error Hierarchy**
+  - `WorkflowError`, `ConnectionError`, `TimeoutError`
+  - `AgentExecutionError`, `CancellationError`
+  - `isRetryable()` and `wrapError()` helpers
+
+- **BoundedAsyncQueue**
+  - Prevents memory overflow during agent execution
+  - Configurable max size and overflow behavior
+
+### Changed
+- Migrated from npm to pnpm workspace
+- Added workspace packages structure
+- Updated `package.json` to v3.2.0
+
+### Technical
+- Worker concurrency: 4 for agents, 2 for scheduled tasks
+- Redis Streams with MAXLEN ~1000 for auto-cleanup
+- Session persistence via `sessionId` parameter
+
+---
+
 ## [3.1.2] - 2026-01-19
 
 ### Changed

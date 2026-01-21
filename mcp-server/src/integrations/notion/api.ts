@@ -5,7 +5,7 @@
 import { httpRequest } from '../../utils/http.js';
 import { loadCredentialsSync, NotionCredentials } from '../../utils/credentials.js';
 
-const CREDENTIALS_FILE = 'notion-token.json';
+const CREDENTIALS_FILE = 'notion.json';
 const NOTION_VERSION = '2022-06-28';
 
 export function loadCredentials(): NotionCredentials | null {
@@ -19,7 +19,7 @@ export async function notionRequest<T = unknown>(
 ): Promise<T> {
   const credentials = loadCredentials();
   if (!credentials) {
-    throw new Error('Notion not authenticated. Add api_key to /root/.claude/secrets/notion-token.json');
+    throw new Error('Notion not authenticated. Add api_key to /root/.claude/secrets/notion.json');
   }
 
   return httpRequest<T>({

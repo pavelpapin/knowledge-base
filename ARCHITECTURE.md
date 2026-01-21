@@ -216,3 +216,72 @@ Integrations expose:
 2. **Execution**: run with logging
 3. **Post-check**: verify output quality
 4. **Human review**: for critical actions
+
+---
+
+## Worker-Based Agent Execution (v3.2.0)
+
+### Overview
+
+Elio OS использует worker-based архитектуру для выполнения агентов, основанную на паттернах из [myagent](https://github.com/serge-arbor/myagent).
+
+### Key Components
+
+#### Packages
+
+- **@elio/workflow** - Temporal-like API для workflow orchestration (BullMQ now, Temporal later)
+- **@elio/agent-runner** - CLI process management with streaming output
+- **@elio/shared** - Paths, utilities
+
+#### Apps
+
+- **apps/worker** - Background workers для agent-execution и scheduled-tasks
+
+### Data Flow
+
+```
+User Request → MCP Server → WorkflowClient.start()
+                              ↓
+                           BullMQ Queue
+                              ↓
+                           Worker (agent-execution)
+                              ↓
+                           AgentRunner.run()
+                              ↓
+                           ProcessHandle (claude CLI)
+                              ↓
+                           Redis Streams (output)
+                              ↓
+                           Telegram notification
+```
+
+### Redis Keys
+
+```
+workflow:{id}:state   - Hash: status, startedAt, progress, error
+workflow:{id}:output  - Stream: type, content, timestamp
+workflow:{id}:signals - PubSub channel: userInput, cancel
+```
+
+### MCP Tools
+
+```
+elio_agent_start   - Start background agent
+elio_agent_status  - Get agent status
+elio_agent_signal  - Send signal (userInput, cancel)
+elio_agent_cancel  - Cancel agent
+```
+
+### Configuration
+
+Environment:
+```bash
+REDIS_HOST=localhost
+REDIS_PORT=6379
+```
+
+Start:
+```bash
+docker compose up -d redis
+pnpm dev:worker
+```

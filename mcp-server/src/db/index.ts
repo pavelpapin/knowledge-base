@@ -47,6 +47,7 @@ export class Database {
   get person() { return this.repos.person; }
   get audit() { return this.repos.audit; }
   get state() { return this.repos.state; }
+  get backlog() { return this.repos.backlog; }
 
   async healthCheck(): Promise<boolean> {
     try {
@@ -102,4 +103,5 @@ export const task = () => getDb().task;
 export const person = () => getDb().person;
 export const audit = () => getDb().audit;
 export const state = () => getDb().state;
+export const backlog = () => getDb().backlog;
 export const cache = () => getDb().cache;

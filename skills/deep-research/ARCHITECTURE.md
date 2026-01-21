@@ -1,260 +1,329 @@
-# Deep Research Agent Architecture
+# Deep Research Agent Architecture v2.0
 
 ## Overview
 
-Deep Research Agent - автономный multi-agent система для глубокого исследования тем. Вдохновлён Perplexity Deep Research, OpenAI DR, Gemini DR.
+Deep Research Agent - автономная multi-agent система для глубокого исследования с reasoning, критическим анализом и actionable выводами.
+
+**Ключевые улучшения v2:**
+- Devil's Advocate Agent для критического анализа
+- Action Plan Agent для конкретных рекомендаций
+- Consilium (multi-model) для верификации
+- Reasoning Layer во всех findings
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    DEEP RESEARCH ORCHESTRATOR                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  Input: "Research topic X"                                          │
-│                │                                                    │
-│                ▼                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                    PLANNER AGENT                             │   │
-│  │  - Разбивает тему на подзадачи                               │   │
-│  │  - Определяет стратегию исследования                         │   │
-│  │  - Создаёт план из 3-10 шагов                                │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                │                                                    │
-│                ▼                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                  RETRIEVAL AGENTS (parallel)                 │   │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐     │   │
-│  │  │ Web      │  │Perplexity│  │ YouTube  │  │ Academic │     │   │
-│  │  │ Search   │  │ API      │  │Transcript│  │ Papers   │     │   │
-│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘     │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                │                                                    │
-│                ▼                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                  ANALYSIS AGENT                              │   │
-│  │  - Извлекает ключевые факты                                  │   │
-│  │  - Выявляет противоречия                                     │   │
-│  │  - Создаёт структурированные заметки                         │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                │                                                    │
-│                ▼                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                  SYNTHESIS AGENT                             │   │
-│  │  - Объединяет findings из всех источников                    │   │
-│  │  - Создаёт coherent narrative                                │   │
-│  │  - Генерирует insights и выводы                              │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                │                                                    │
-│                ▼                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                  VERIFICATION AGENT                          │   │
-│  │  - Проверяет факты против источников                         │   │
-│  │  - Валидирует citations                                      │   │
-│  │  - Оценивает confidence                                      │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                │                                                    │
-│                ▼                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                  OUTPUT AGENTS (parallel)                    │   │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐     │   │
-│  │  │ Notion   │  │ Markdown │  │ NotebookLM│ │ Slides   │     │   │
-│  │  │ Export   │  │ Report   │  │ Podcast  │  │ PPT      │     │   │
-│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘     │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      DEEP RESEARCH ORCHESTRATOR v2.0                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Input: "Research topic X" + context (purpose, audience)                     │
+│                │                                                             │
+│                ▼                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                    1. DISCOVERY AGENT                                  │  │
+│  │  - Уточняет тему через вопросы                                        │  │
+│  │  - Определяет цель (competitive analysis, market research, etc.)      │  │
+│  │  - Идентифицирует ключевые аспекты                                    │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                │                                                             │
+│                ▼                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                    2. PLANNER AGENT                                    │  │
+│  │  - Разбивает на подтемы с приоритетами                                │  │
+│  │  - Создаёт research questions (не generic)                            │  │
+│  │  - Определяет source strategy                                         │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                │                                                             │
+│                ▼                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │               3. RETRIEVAL AGENTS (parallel, 5 types)                  │  │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │  │
+│  │  │ Web      │  │Perplexity│  │ YouTube  │  │ News     │  │ Expert  │ │  │
+│  │  │ Research │  │ Deep     │  │Transcript│  │ Sources  │  │ Sources │ │  │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └─────────┘ │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                │                                                             │
+│                ▼                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │               4. ANALYSIS AGENT (with reasoning)                       │  │
+│  │  - Извлекает факты + WHY they matter                                  │  │
+│  │  - Categorizes по relevance to goal                                   │  │
+│  │  - Identifies patterns and connections                                │  │
+│  │  - Flags contradictions                                               │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                │                                                             │
+│                ▼                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │               5. FACT CHECK AGENT                                      │  │
+│  │  - Каждый факт требует ≥2 источника                                   │  │
+│  │  - Cross-validates claims                                             │  │
+│  │  - Marks unverified as "needs verification"                           │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                │                                                             │
+│                ▼                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │               6. SYNTHESIS AGENT (structured)                          │  │
+│  │  - Creates narrative with clear structure                             │  │
+│  │  - Для каждого факта: WHAT + SO WHAT + NOW WHAT                       │  │
+│  │  - Groups by themes, not by sources                                   │  │
+│  │  - Removes redundant/irrelevant info                                  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                │                                                             │
+│                ▼                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │        7. DEVIL'S ADVOCATE AGENT (NEW in v2)                           │  │
+│  │  - Challenges every conclusion                                        │  │
+│  │  - Identifies risks and blind spots                                   │  │
+│  │  - Provides counter-arguments                                         │  │
+│  │  - Questions assumptions                                              │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                │                                                             │
+│                ▼                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │        8. ACTION PLAN AGENT (NEW in v2)                                │  │
+│  │  - Creates specific, actionable recommendations                       │  │
+│  │  - Prioritizes by impact/effort matrix                                │  │
+│  │  - Includes next steps with owners (if applicable)                    │  │
+│  │  - Defines success metrics                                            │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                │                                                             │
+│                ▼                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │        9. CONSILIUM (multi-model verification) (NEW in v2)             │  │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐                             │  │
+│  │  │ Claude   │  │ GPT-4    │  │ Gemini   │  → Vote on conclusions      │  │
+│  │  │ Review   │  │ Review   │  │ Review   │  → Consensus required       │  │
+│  │  └──────────┘  └──────────┘  └──────────┘                             │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                │                                                             │
+│                ▼                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │               10. REPORT EDITOR                                        │  │
+│  │  - Formats final report                                               │  │
+│  │  - Adds executive summary (verified facts only!)                      │  │
+│  │  - Creates Notion/Markdown output                                     │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Agents
+## New Agents in v2
 
-### 1. Planner Agent
-**Задача**: Разбить тему на исследуемые подтемы
-**Input**: Topic string
-**Output**: Research plan (JSON)
+### 7. Devil's Advocate Agent
 
-```json
-{
-  "topic": "AI Agents 2026",
-  "depth": "deep",
-  "subtopics": [
-    "Current state of AI agents",
-    "Key players (OpenAI, Anthropic, Google)",
-    "Multi-agent architectures",
-    "Use cases in enterprise",
-    "Limitations and challenges"
-  ],
-  "questions": [
-    "What are the main architectural patterns?",
-    "Which companies are leading?",
-    "What are real-world deployments?"
-  ],
-  "sources_strategy": ["web", "perplexity", "youtube", "arxiv"]
-}
-```
+**Purpose**: Challenge conclusions, find blind spots, question assumptions.
 
-### 2. Retrieval Agents
-Параллельно собирают информацию из разных источников:
+**Input**: Synthesis report + findings
 
-| Agent | Source | Method |
-|-------|--------|--------|
-| Web Search | Google/Bing | Claude web_search tool |
-| Perplexity | perplexity.ai | API (if available) or web |
-| YouTube | youtube.com | yt-dlp transcripts |
-| Academic | arxiv, Google Scholar | web_fetch + parsing |
-| Social | Twitter/X, Reddit | web_fetch |
-
-### 3. Analysis Agent
-**Задача**: Извлечь структурированные данные
 **Output**:
 ```json
 {
-  "key_facts": [...],
-  "entities": [...],
-  "contradictions": [...],
-  "confidence_scores": {...}
+  "challenges": [
+    {
+      "conclusion": "Harvey is the leader in Legal AI",
+      "challenge": "Leadership based on funding, not revenue. Actual usage data unavailable.",
+      "risk": "Overestimating market position based on PR",
+      "alternative_view": "Multiple players may have similar actual traction"
+    }
+  ],
+  "blind_spots": [
+    "No analysis of Asian market players",
+    "Missing regulatory risk assessment"
+  ],
+  "assumptions_questioned": [
+    {
+      "assumption": "Vertical AI is more defensible",
+      "counter": "Horizontal players can add vertical features faster"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Market timing - too early for enterprise AI adoption",
+      "probability": "medium",
+      "impact": "high"
+    }
+  ]
 }
 ```
 
-### 4. Synthesis Agent
-**Задача**: Создать coherent отчёт
-**Output**: Markdown report with:
-- Executive summary
-- Key findings
-- Detailed analysis
-- Sources
-- Confidence assessment
+### 8. Action Plan Agent
 
-### 5. Verification Agent
-**Задача**: Проверить факты
-- Cross-reference claims
-- Validate citations work
-- Flag uncertain claims
+**Purpose**: Convert findings into concrete, actionable recommendations.
 
-### 6. Output Agents
+**Input**: Synthesis + Devil's Advocate output + research goal
 
-#### Notion Export
-- Create page in Notion
-- Add structured content
-- Link sources
-
-#### Markdown Report
-- Standard markdown file
-- With TOC
-- Embedded sources
-
-#### NotebookLM Podcast
-- Generate audio summary
-- Export to NotebookLM format
-
-#### Slides/PPT
-- Key points as slides
-- Executive summary format
-
-## Implementation
-
-### Phase 1: Core (MVP)
-```
-skills/deep-research/
-├── skill.json
-├── run.ts
-├── agents/
-│   ├── planner.ts
-│   ├── retrieval.ts
-│   ├── analysis.ts
-│   └── synthesis.ts
-└── outputs/
-    ├── markdown.ts
-    └── notion.ts
+**Output**:
+```json
+{
+  "recommendations": [
+    {
+      "priority": 1,
+      "action": "Deep dive on Harvey's actual customer retention",
+      "rationale": "They claim 700 firms but no NRR data available",
+      "effort": "low",
+      "impact": "high",
+      "next_steps": [
+        "Find Harvey customer interviews",
+        "Check Glassdoor for employee insights",
+        "Search for churn data in news"
+      ],
+      "success_metric": "Get actual usage/retention data",
+      "owner": "researcher"
+    }
+  ],
+  "key_decisions": [
+    {
+      "decision": "Which vertical to focus on?",
+      "options": ["Legal (crowded)", "Wealth Management (emerging)", "Insurance (underserved)"],
+      "recommendation": "Wealth Management - Nevis pattern shows opportunity",
+      "reasoning": "Less competition, Sequoia backing validates, ex-Revolut team shows fintech DNA"
+    }
+  ],
+  "quick_wins": [
+    "Subscribe to Harvey/Nevis newsletters for updates",
+    "Set up Google Alerts for vertical AI funding"
+  ]
+}
 ```
 
-### Phase 2: Enhanced
-- Add Perplexity API integration
-- Add YouTube transcript agent
-- Add verification agent
+### 9. Consilium (Multi-Model Verification)
 
-### Phase 3: Advanced
-- NotebookLM integration
-- Slides generation
-- Scheduled research jobs
+**Purpose**: Use multiple AI models to validate conclusions.
 
-## Config
+**Process**:
+1. Send executive summary + key conclusions to 3 models
+2. Each model rates confidence (1-10) and flags issues
+3. Only conclusions with 2/3+ agreement go to final report
+4. Disagreements are noted in "Contested Points" section
+
+**Output**:
+```json
+{
+  "verified_conclusions": [
+    {
+      "conclusion": "Harvey raised $510M+ and targets $100M ARR",
+      "votes": { "claude": 9, "gpt4": 8, "gemini": 9 },
+      "consensus": "high"
+    }
+  ],
+  "contested_points": [
+    {
+      "claim": "Vertical AI is more defensible than horizontal",
+      "votes": { "claude": 7, "gpt4": 4, "gemini": 6 },
+      "disagreement": "GPT-4 notes horizontal players can pivot faster"
+    }
+  ]
+}
+```
+
+## Report Structure v2
+
+### Required Sections
+
+1. **Executive Summary** (≤300 words)
+   - Only verified facts (2+ sources)
+   - Key conclusion in first sentence
+   - 3-5 bullet points max
+
+2. **Key Findings** (structured)
+   ```
+   ### Finding: [Title]
+
+   **What**: [Fact]
+   **So What**: [Why it matters for your goal]
+   **Now What**: [Action to take]
+   **Sources**: [Links]
+   **Confidence**: [High/Medium/Low based on consilium]
+   ```
+
+3. **Competitive Landscape** (if applicable)
+   - Clear comparison table
+   - Strengths/weaknesses
+   - No fluff descriptions
+
+4. **Action Plan**
+   - Prioritized recommendations
+   - Effort/Impact matrix
+   - Clear next steps
+
+5. **Risks & Challenges**
+   - Devil's Advocate findings
+   - Blind spots acknowledged
+   - Contested points
+
+6. **Appendix**
+   - Full source list
+   - Methodology notes
+   - Unverified claims (marked clearly)
+
+## Anti-Patterns (What NOT to do)
+
+1. **No generic descriptions**
+   - BAD: "Harvey uses AI for legal work"
+   - GOOD: "Harvey's custom OpenAI model processes 50K+ documents/day for due diligence"
+
+2. **No unsupported claims**
+   - BAD: "Harvey is the market leader"
+   - GOOD: "Harvey raised the most funding ($510M), though revenue data is not public"
+
+3. **No technology dumps**
+   - BAD: List of all technologies a company uses
+   - GOOD: Technologies that differentiate them + why they matter
+
+4. **No missing context**
+   - BAD: "$40M funding"
+   - GOOD: "$40M Series A (Dec 2025), 10x previous round, Sequoia lead"
+
+5. **No action-free findings**
+   - Every finding must have "So What" and "Now What"
+
+## Quality Checklist
+
+Before marking research complete:
+
+- [ ] Executive summary has 0 unverified claims
+- [ ] Every finding has ≥2 sources
+- [ ] Action plan has ≥5 specific recommendations
+- [ ] Devil's Advocate section included
+- [ ] Contested points documented
+- [ ] No generic/fluffy descriptions
+- [ ] Clear answer to original research question
+- [ ] Notion page created and verified
+
+## Configuration
 
 ```json
 {
   "default_depth": "medium",
-  "max_sources": 20,
-  "max_iterations": 5,
-  "output_formats": ["markdown", "notion"],
-  "connectors": {
-    "perplexity": { "enabled": false, "api_key_env": "PERPLEXITY_API_KEY" },
-    "notion": { "enabled": true, "api_key_env": "NOTION_API_KEY" }
+  "max_sources": 30,
+  "consilium_enabled": true,
+  "consilium_models": ["claude", "gpt-4", "gemini"],
+  "min_sources_per_fact": 2,
+  "devils_advocate_enabled": true,
+  "action_plan_required": true,
+  "report_sections": {
+    "executive_summary": { "max_words": 300, "verified_only": true },
+    "findings": { "format": "what_so_what_now_what" },
+    "risks": { "required": true }
   }
 }
 ```
 
-## Usage
+## Implementation Status
 
-```bash
-# Quick research
-elio research "AI Agents 2026" --depth quick
-
-# Deep research with Notion output
-elio research "Quantum Computing Applications" --depth deep --output notion
-
-# Research from Telegram
-/research AI Agents 2026
-```
-
-## Iteration Flow
-
-```
-1. User submits topic
-2. Planner creates research plan
-3. User approves/modifies plan (optional)
-4. Retrieval agents gather data (parallel)
-5. Analysis extracts structure
-6. Synthesis creates report
-7. Verification checks facts
-8. Output exports to chosen format
-9. User reviews
-10. Iterate if needed
-```
-
-## Data Model
-
-```typescript
-interface ResearchJob {
-  id: string;
-  topic: string;
-  depth: 'quick' | 'medium' | 'deep';
-  status: 'planning' | 'retrieving' | 'analyzing' | 'synthesizing' | 'verifying' | 'done';
-  plan: ResearchPlan;
-  sources: Source[];
-  findings: Finding[];
-  report: string;
-  outputs: OutputResult[];
-  created_at: string;
-  updated_at: string;
-}
-
-interface Source {
-  url: string;
-  title: string;
-  type: 'web' | 'youtube' | 'paper' | 'social';
-  content: string;
-  retrieved_at: string;
-  relevance_score: number;
-}
-
-interface Finding {
-  claim: string;
-  sources: string[];
-  confidence: number;
-  category: string;
-}
-```
+- [x] Discovery Agent (basic)
+- [x] Planner Agent
+- [x] Retrieval Agents (web, youtube)
+- [x] Analysis Agent (basic)
+- [x] Fact Check Agent (basic)
+- [x] Synthesis Agent
+- [ ] Devil's Advocate Agent ← **NEW**
+- [ ] Action Plan Agent ← **NEW**
+- [ ] Consilium Integration ← **NEW**
+- [x] Notion Export
+- [x] Markdown Export
 
 ## Sources
 
 - [Perplexity Deep Research](https://www.perplexity.ai/hub/blog/introducing-perplexity-deep-research)
 - [Deep Research Agents: Systematic Examination](https://arxiv.org/html/2506.18096v2)
-- [2026 AI Research Landscape](https://labs.adaline.ai/p/the-ai-research-landscape-in-2026)
+- Internal: Nightly Consilium pattern from `/mcp-server/src/skills/nightly-consilium.ts`

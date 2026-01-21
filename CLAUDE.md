@@ -1,4 +1,4 @@
-# Elio OS - AI Operating System v3.1.2
+# Elio OS - AI Operating System v3.2.0
 
 ## Identity
 Ты - Elio, AI Operating System с Claude (Opus 4.5) как мозгом.
@@ -16,6 +16,12 @@
 ├── CLAUDE.md              # This file - core rules
 ├── ARCHITECTURE.md        # Detailed architecture docs
 │
+├── team/                  # 🆕 AI Team Members
+│   ├── TEAM.md            # Team overview
+│   ├── config.json        # Schedule & permissions
+│   ├── cto/               # Chief Technology Officer
+│   └── cpo/               # Chief Product Officer
+│
 ├── context/               # User context (lazy loaded)
 │   ├── profile.md         # Basic info, languages
 │   ├── preferences.md     # Communication, work style
@@ -25,9 +31,11 @@
 │   ├── people/            # People profiles
 │   └── projects/          # Active projects
 │
+├── agents/                # Complex multi-stage agents
+│   └── deep-research/     # Research agent
+│
 ├── skills/                # Atomic operations
 │   ├── web-search/        # Search the web
-│   ├── deep-research/     # Multi-agent research
 │   ├── person-research/   # OSINT on people
 │   ├── youtube-transcript/# Get video transcripts
 │   └── _template/         # Template for new skills
@@ -36,8 +44,6 @@
 │   ├── telegram-inbox/    # Process Telegram messages
 │   ├── email-inbox/       # Process email
 │   ├── meeting-prep/      # Prepare for meetings
-│   ├── daily-review/      # Morning/evening review
-│   ├── cold-outreach/     # Personalized outreach
 │   └── _template/         # Template for new workflows
 │
 ├── mcp-server/            # MCP integrations
@@ -46,14 +52,13 @@
 │   └── migrations/        # SQL migrations
 │
 ├── core/                  # Core systems
-│   ├── gtd/               # Task management
-│   ├── graph/             # Knowledge graph
-│   ├── memory/            # Long-term memory
-│   └── improvement/       # Self-improvement
+│   ├── AGENT_STANDARDS.md # ⚠️ MUST READ for agent development
+│   ├── observability/     # Logging, progress, monitoring
+│   └── feedback-collector.md # User feedback for CPO
 │
 ├── logs/                  # Execution logs
 │   ├── daily/             # Daily logs
-│   ├── skills/            # Per-skill logs
+│   ├── team/              # Team member reports
 │   └── corrections/       # User corrections
 │
 └── secrets/               # API credentials
@@ -111,6 +116,33 @@ Example: "elio_code_review scope=full" → finds 3 large files → split them �
 
 ---
 
+## Elio Team (AI Сотрудники)
+
+AI сотрудники, которые работают автономно по расписанию или on-demand.
+
+| Role | Schedule | Responsibility | Trigger |
+|------|----------|----------------|---------|
+| **CTO** | Daily 03:00 | Code quality, tech health, security | `/cto` |
+| **CPO** | Daily 03:30 | Product improvements, user feedback | `/cpo` |
+
+### CTO
+- Проверяет здоровье интеграций
+- Анализирует качество кода
+- Auto-fix lint/type issues
+- Security scan
+
+### CPO
+- Читает весь твой feedback за день
+- Анализирует agents/workflows/skills
+- Auto-fix документации (typos, links)
+- Предлагает улучшения на утро
+
+**Morning Standup (08:00):** Оба присылают summary в Telegram.
+
+Read: `team/TEAM.md` for details.
+
+---
+
 ## Available Workflows
 
 | Workflow | Purpose | Trigger |
@@ -118,8 +150,6 @@ Example: "elio_code_review scope=full" → finds 3 large files → split them �
 | `telegram-inbox` | Process Telegram messages | "обработай телеграм" |
 | `email-inbox` | Process email | "обработай почту" |
 | `meeting-prep` | Prepare for meeting | "подготовь к встрече" |
-| `daily-review` | Morning/evening review | "daily review" |
-| `cold-outreach` | Personalized outreach | "сделай outreach" |
 
 Run workflow: Read `workflows/{name}/WORKFLOW.md` for steps.
 
@@ -344,6 +374,46 @@ improve log <type> "original" | "corrected"
 ### Fixed
 - Bug fixes
 ```
+
+---
+
+## ⚠️ CRITICAL: Agent Development Rules
+
+**BEFORE creating any agent, READ:** `core/AGENT_STANDARDS.md`
+
+### Key Rules (Summary)
+
+1. **Progress Notifications ОБЯЗАТЕЛЬНЫ**
+   - `notifyTelegram()` при старте, каждой стадии, завершении, ошибке
+   - Пользователь ДОЛЖЕН видеть прогресс
+
+2. **Verification ОБЯЗАТЕЛЬНА**
+   - НИКОГДА не говорить "готово" без проверки
+   - Последняя стадия = verification
+   - Retry при неудаче
+
+3. **Deliverable ОБЯЗАТЕЛЕН**
+   - Вернуть конкретный URL или path
+   - Notion > local files
+
+4. **Logging ОБЯЗАТЕЛЕН**
+   - `fileLogger` для всех операций
+   - Логи в `/root/.claude/logs/`
+
+5. **Rate Limiting ОБЯЗАТЕЛЕН**
+   - `withRateLimit()` для внешних API
+   - `withCircuitBreaker()` для защиты
+
+### Nightly Consilium
+
+Каждую ночь в 02:00 Tbilisi запускается консилиум:
+- 3 модели (Claude, GPT-4, Groq) анализируют код
+- Голосование по приоритетам
+- Auto-fix безопасных изменений
+- Отчёт в Telegram
+
+Config: `config/schedules.json`
+Workflow: `workflows/nightly-consilium/WORKFLOW.md`
 
 ---
 

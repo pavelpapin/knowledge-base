@@ -18,6 +18,8 @@ import { notebooklmAdapter } from './notebooklm/index.js';
 import { databaseAdapter } from './database/index.js';
 import { sqlAdapter } from './sql/index.js';
 import { webscrapingAdapter } from './webscraping/index.js';
+import { agentsAdapter } from './agents/index.js';
+import { backlogAdapter } from './backlog/index.js';
 
 export const adapters: Adapter[] = [
   gmailAdapter,
@@ -33,7 +35,9 @@ export const adapters: Adapter[] = [
   notebooklmAdapter,
   databaseAdapter,
   sqlAdapter,
-  webscrapingAdapter
+  webscrapingAdapter,
+  agentsAdapter,
+  backlogAdapter
 ];
 
 export {
@@ -50,5 +54,7 @@ export {
   notebooklmAdapter,
   databaseAdapter,
   sqlAdapter,
-  webscrapingAdapter
+  webscrapingAdapter,
+  agentsAdapter,
+  backlogAdapter
 };

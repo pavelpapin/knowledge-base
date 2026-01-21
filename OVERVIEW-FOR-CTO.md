@@ -1,8 +1,11 @@
 # Elio OS - Technical Overview for CTO
 
+**Version:** 3.2.0
+**Updated:** 2026-01-21
+
 ## What is it?
 
-Elio OS - персональная AI Operating System с Claude (Opus 4.5) как "мозгом". Система оркестрирует skills, workflows и интеграции для автоматизации рутинных задач executive assistant.
+Elio OS — персональная AI Operating System с Claude (Opus 4.5) как "мозгом". Система оркестрирует skills, workflows и интеграции для автоматизации задач executive assistant. Включает AI Team (CTO, CPO, CEO) которая автономно работает ночью.
 
 ---
 
@@ -10,185 +13,268 @@ Elio OS - персональная AI Operating System с Claude (Opus 4.5) ка
 
 ### Core Principles
 
-1. **Unix Philosophy** - каждый компонент делает одну вещь хорошо
-2. **Context Engineering** - правильная организация контекста для LLM (lazy loading, structured files)
-3. **Composability** - атомарные skills комбинируются в workflows
-4. **Human-in-the-Loop** - критические действия требуют подтверждения
-5. **Self-Improvement** - система учится на коррекциях пользователя
+1. **Unix Philosophy** — каждый компонент делает одну вещь хорошо
+2. **Context Engineering** — lazy loading, structured files для LLM
+3. **Composability** — атомарные skills комбинируются в workflows
+4. **Human-in-the-Loop** — критические действия требуют подтверждения
+5. **Self-Improvement** — система учится на коррекциях пользователя
+6. **Chain of Responsibility** — агенты читают output друг друга
 
 ### Tech Stack
 
 | Layer | Technology |
 |-------|------------|
 | LLM | Claude Opus 4.5 (via Claude Code CLI) |
-| Runtime | Node.js 22+ / Bun |
+| Runtime | Bun / Node.js 22+ |
 | Language | TypeScript (strict) |
 | Protocol | MCP (Model Context Protocol) |
+| Database | Supabase (PostgreSQL) |
+| Queue | Redis + BullMQ |
 | Hosting | Ubuntu 24.04 VPS |
 | Interface | Telegram Bot, CLI, Cursor IDE |
 
 ---
 
-## System Components
+## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      USER INTERFACES                         │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                   │
-│  │ Telegram │  │   CLI    │  │  Cursor  │                   │
-│  │   Bot    │  │ (claude) │  │   IDE    │                   │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘                   │
-└───────┼─────────────┼─────────────┼─────────────────────────┘
-        │             │             │
-        └─────────────┼─────────────┘
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     CLAUDE (Opus 4.5)                        │
-│                     ┌───────────────┐                        │
-│                     │   CLAUDE.md   │  ◄── System prompt     │
-│                     │   (core rules)│      + context         │
-│                     └───────────────┘                        │
-└─────────────────────────────────────────────────────────────┘
-        │                     │                     │
-        ▼                     ▼                     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      USER INTERFACES                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
+│  │ Telegram │  │   CLI    │  │  Cursor  │  │  Cron    │        │
+│  │   Bot    │  │ (claude) │  │   IDE    │  │  Jobs    │        │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘        │
+└───────┼─────────────┼─────────────┼─────────────┼───────────────┘
+        │             │             │             │
+        └─────────────┴──────┬──────┴─────────────┘
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    SYSTEM LOOP (Orchestration)                   │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Hourly: Check schedules → Spawn agents → Track state     │   │
+│  │ Sources: team/config.json, config/schedules.json, DB     │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        ▼                    ▼                    ▼
 ┌───────────────┐   ┌───────────────┐   ┌───────────────────┐
-│    CONTEXT    │   │    SKILLS     │   │    WORKFLOWS      │
+│   AI TEAM     │   │    SKILLS     │   │    WORKFLOWS      │
 │               │   │               │   │                   │
-│ profile.md    │   │ web-search    │   │ telegram-inbox    │
-│ preferences   │   │ deep-research │   │ email-inbox       │
-│ philosophy    │   │ person-search │   │ meeting-prep      │
-│ writing-style │   │ youtube-trans │   │ daily-review      │
-│ people/       │   │               │   │ cold-outreach     │
-│ companies/    │   │ Each has:     │   │                   │
-│ projects/     │   │ - SKILL.md    │   │ Each has:         │
-│               │   │ - Algorithm   │   │ - WORKFLOW.md     │
-│               │   │ - I/O spec    │   │ - Step-by-step    │
+│ ┌───────────┐ │   │ web-search    │   │ telegram-inbox    │
+│ │    CTO    │ │   │ deep-research │   │ email-inbox       │
+│ │  00:30    │ │   │ person-search │   │ meeting-prep      │
+│ └───────────┘ │   │ code-review   │   │ day-review        │
+│ ┌───────────┐ │   │ system-review │   │ consilium         │
+│ │    CPO    │ │   │ youtube-trans │   │ cold-outreach     │
+│ │  01:00    │ │   │               │   │                   │
+│ └───────────┘ │   │ Each has:     │   │ Each has:         │
+│ ┌───────────┐ │   │ - SKILL.md    │   │ - WORKFLOW.md     │
+│ │    CEO    │ │   │ - Algorithm   │   │ - Step-by-step    │
+│ │  01:30    │ │   │ - I/O spec    │   │ - Human review    │
+│ └───────────┘ │   │               │   │   points          │
 └───────────────┘   └───────────────┘   └───────────────────┘
+        │                   │                    │
+        └───────────────────┼────────────────────┘
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    MCP SERVER (Gateway)                          │
+│                                                                  │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │
+│  │  Gmail  │ │Calendar │ │ Notion  │ │LinkedIn │ │Perplexi │   │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘   │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │
+│  │Telegram │ │  Slack  │ │ Sheets  │ │  Docs   │ │   n8n   │   │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘   │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐               │
+│  │ Backlog │ │Database │ │ Agents  │ │Webscrape│               │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘               │
+│                                                                  │
+│  16 Adapters │ 50+ MCP Tools │ Repository Pattern               │
+└─────────────────────────────────────────────────────────────────┘
                             │
                             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    MCP INTEGRATIONS                          │
-│                                                              │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │
-│  │  Gmail  │ │Calendar │ │ Notion  │ │LinkedIn │           │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────┘           │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │
-│  │Telegram │ │  Slack  │ │ Sheets  │ │   n8n   │           │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────┘           │
-│  ┌─────────┐ ┌─────────┐ ┌──────────┐                      │
-│  │ G.Docs  │ │Perplexi │ │NotebookLM│                      │
-│  └─────────┘ └─────────┘ └──────────┘                      │
-│                                                              │
-│  Total: 35+ MCP tools                                        │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     CORE SYSTEMS                             │
-│                                                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │     GTD     │  │   Context   │  │    Self-    │         │
-│  │   System    │  │    Graph    │  │ Improvement │         │
-│  │             │  │             │  │             │         │
-│  │ - Inbox     │  │ - People    │  │ - Log corr. │         │
-│  │ - Next      │  │ - Companies │  │ - Patterns  │         │
-│  │ - Projects  │  │ - Relations │  │ - Suggest   │         │
-│  │ - Waiting   │  │ - Notes     │  │   rules     │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      DATA LAYER                                  │
+│                                                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
+│  │  Supabase   │  │    Redis    │  │  Local FS   │             │
+│  │  (Postgres) │  │   (Queue)   │  │   (Logs)    │             │
+│  │             │  │             │  │             │             │
+│  │ - backlog   │  │ - BullMQ    │  │ /logs/      │             │
+│  │ - tasks     │  │ - Cache     │  │ /state/     │             │
+│  │ - messages  │  │ - Pub/Sub   │  │ /context/   │             │
+│  │ - workflow  │  │             │  │             │             │
+│  │ - people    │  │             │  │             │             │
+│  └─────────────┘  └─────────────┘  └─────────────┘             │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## What's Already Working
+## Nightly Cycle (AI Team)
 
-### MCP Integrations (35+ tools)
+Каждую ночь система автоматически запускает цепочку агентов:
 
-| Integration | Capabilities | Status |
-|-------------|--------------|--------|
-| **Gmail** | List, read, send, search emails | Ready |
-| **Google Calendar** | View today/week, create events | Ready |
-| **Google Docs** | Create, read, edit, search docs | Ready |
-| **Google Sheets** | Read, write, append, batch ops | Ready |
-| **Notion** | Search, query DBs, create pages | Ready |
-| **LinkedIn** | Profile lookup, people search | Ready (via Proxycurl) |
-| **Perplexity** | AI search, research, fact-check | Ready |
-| **Telegram** | Send messages, notifications | Ready |
-| **Slack** | Messages, channels, search | Ready |
-| **n8n** | List workflows, trigger webhooks | Ready |
-| **NotebookLM** | Local notebook management | Ready |
+```
+00:00  Day Review     ─┐
+       (скрипт)        │ Собирает: errors, git, conversations, metrics
+                       │ Output: /logs/daily/{date}/day-summary.json
+                       ▼
+00:30  CTO            ─┐
+       (agent)         │ Читает: day-summary.json
+                       │ Делает: health check, code review, security scan
+                       │ Решает: нужен ли consilium (multi-model review)?
+                       │ Auto-fix: lint, types, small issues
+                       │ Output: /logs/team/cto/{date}.md + Notion
+                       ▼
+01:00  CPO            ─┐
+       (agent)         │ Читает: day-summary.json + CTO report
+                       │ Делает: quality analysis, feedback review
+                       │ Output: /logs/team/cpo/{date}.md + Notion
+                       ▼
+01:30  CEO            ─┐
+       (agent)         │ Читает: CTO + CPO reports
+                       │ Делает: strategic decisions, task assignment
+                       │ Режет: scope, zombie tasks
+                       │ Output: /logs/team/ceo/{date}.md + Notion
+                       ▼
+08:00  Standup         │ Consolidated summary → Telegram
+```
 
-### Skills (Atomic Operations)
+### Chain Reading
 
-| Skill | What it does | Implementation |
-|-------|--------------|----------------|
-| `web-search` | Search via Perplexity/WebSearch | SKILL.md + integration |
-| `deep-research` | Multi-agent research with planning, retrieval, analysis, synthesis | TypeScript, 5 agents |
-| `person-research` | OSINT - gather public info about a person | SKILL.md + integrations |
-| `youtube-transcript` | Download and process video transcripts | yt-dlp based |
+Каждый агент читает output предыдущих:
+- **CTO** ← day-summary.json
+- **CPO** ← day-summary.json + CTO report
+- **CEO** ← CTO report + CPO report + backlogs
 
-### Workflows (Multi-step Processes)
+---
 
-| Workflow | Steps | Human Review |
-|----------|-------|--------------|
-| `telegram-inbox` | Get messages → Find context → Draft reply → Approve → Send → Log | Yes, before send |
-| `email-inbox` | Fetch → Triage → Prioritize → Draft responses → Approve → Send | Yes, before send |
-| `meeting-prep` | Get event → Research participants → Gather history → Generate prep doc | Optional |
-| `daily-review` | Calendar + Tasks + Inbox status + Focus suggestion | Display only |
-| `cold-outreach` | Research person → Research company → Find angle → Draft → Approve → Send | Yes, before send |
+## MCP Integrations
 
-### Core Systems
+### Adapters (16)
 
-| System | Purpose | Storage |
+| Adapter | Tools | Purpose |
+|---------|-------|---------|
+| **gmail** | list, read, send, search | Email management |
+| **calendar** | today, week, create | Schedule management |
+| **notion** | search, query, create_page | Knowledge base |
+| **telegram** | send, notify | Notifications |
+| **slack** | send, channels, history | Team communication |
+| **sheets** | read, write, append | Data storage |
+| **docs** | get, create, append | Document management |
+| **linkedin** | profile, search | Professional network |
+| **perplexity** | search, research, factcheck | AI-powered search |
+| **n8n** | workflows, trigger | Automation |
+| **notebooklm** | create, analyze | Research notebooks |
+| **database** | workflow, schedule, task, state | Supabase access |
+| **backlog** | create, list, update, complete, stats | Task management |
+| **agents** | start, status, stop | Agent orchestration |
+| **webscraping** | jina_reader | Web content extraction |
+| **sql** | query | Direct SQL access |
+
+### Database Tables
+
+| Table | Purpose |
+|-------|---------|
+| `backlog_items` | CTO/CPO task backlog with Notion sync |
+| `workflow_runs` | Execution history |
+| `scheduled_tasks` | Cron-style schedules |
+| `messages` | Inbox from all sources |
+| `tasks` | GTD task management |
+| `people` | CRM contacts |
+| `system_state` | Key-value store |
+| `audit_log` | Security tracking |
+
+---
+
+## Skills
+
+| Skill | Purpose | Implementation |
+|-------|---------|----------------|
+| `web-search` | Search via Perplexity/WebSearch | SKILL.md + MCP |
+| `deep-research` | Multi-agent research pipeline | TypeScript, 7+ stages |
+| `person-research` | OSINT on people | SKILL.md + LinkedIn/web |
+| `code-review` | Architecture and quality audit | TypeScript + AST |
+| `system-review` | System health check | SKILL.md |
+| `youtube-transcript` | Video transcript extraction | yt-dlp based |
+| `auto-test` | Generate tests for code | TypeScript |
+
+---
+
+## Workflows
+
+| Workflow | Stages | Human Review |
+|----------|--------|--------------|
+| `telegram-inbox` | Get → Context → Draft → Approve → Send | Yes |
+| `email-inbox` | Fetch → Triage → Draft → Approve → Send | Yes |
+| `meeting-prep` | Event → Research → History → Prep doc | Optional |
+| `day-review` | Collect errors, git, conversations, metrics | No |
+| `consilium` | Multi-model code review + voting | Auto |
+| `cold-outreach` | Research → Angle → Draft → Approve | Yes |
+
+---
+
+## Scripts
+
+| Script | Purpose | Trigger |
 |--------|---------|---------|
-| **GTD** | Task management (inbox, next, waiting, projects) | TypeScript CLI, JSON |
-| **Context Graph** | Knowledge graph of people/companies/relations | TypeScript, JSON |
-| **Self-Improvement** | Log corrections, detect patterns, suggest rules | TypeScript, JSONL |
-| **Headless Mode** | Autonomous task execution, scheduling | TypeScript |
-
-### Context Management
-
-| File | Purpose |
-|------|---------|
-| `context/profile.md` | Basic info, languages, location |
-| `context/preferences.md` | Communication style, work preferences |
-| `context/philosophy.md` | Goals, values, decision framework |
-| `context/writing-style.md` | Examples by channel (email, telegram, docs) |
-| `context/people/{name}.md` | Individual profiles |
-| `context/companies/{name}.md` | Company profiles |
+| `system-loop.ts` | Universal orchestration | Hourly cron |
+| `day-review.ts` | Data collection | 00:00 daily |
+| `consilium.ts` | Multi-model review | CTO decision |
+| `extract-conversations.ts` | Session log extraction | Day review |
 
 ---
 
-## Data Flow Example: Telegram Inbox
+## File Structure
 
 ```
-1. User: "обработай телеграм"
-
-2. Claude reads: workflows/telegram-inbox/WORKFLOW.md
-
-3. Step 1: Get messages
-   └── MCP: elio_telegram_getUpdates
-   └── Returns: [{from: "John", text: "..."}]
-
-4. Step 2: Find context
-   └── Check: context/people/john.md (if exists)
-   └── If not: Run person-research skill
-   └── Search: Calendar (recent meetings), Gmail (threads)
-
-5. Step 3: Draft reply
-   └── Load: context/writing-style.md (Telegram style)
-   └── Generate personalized response
-
-6. Step 4: Human review
-   └── Display: message + context + draft
-   └── Options: [Send] [Edit] [Skip]
-
-7. Step 5: Send (if approved)
-   └── MCP: elio_telegram_send
-
-8. Step 6: Update context
-   └── Log interaction
-   └── Update context/people/john.md (last_interaction)
+/root/.claude/
+├── CLAUDE.md              # Core rules (always loaded)
+├── OVERVIEW-FOR-CTO.md    # This file
+├── ARCHITECTURE.md        # Detailed architecture
+│
+├── team/                  # AI Team Members
+│   ├── config.json        # Schedule & permissions
+│   ├── cto/ROLE.md        # CTO role definition
+│   ├── cpo/ROLE.md        # CPO role definition
+│   └── ceo/ROLE.md        # CEO role definition
+│
+├── scripts/               # Orchestration scripts
+│   ├── system-loop.ts     # Main orchestrator
+│   ├── day-review.ts      # Data collector
+│   └── consilium.ts       # Multi-model review
+│
+├── mcp-server/            # MCP Gateway
+│   ├── src/adapters/      # 16 integration adapters
+│   ├── src/db/            # Repository pattern
+│   └── migrations/        # SQL migrations
+│
+├── skills/                # Atomic operations (8)
+├── workflows/             # Multi-step processes (9)
+├── agents/                # Complex agents
+│   └── deep-research/     # Research pipeline
+│
+├── context/               # User context (lazy loaded)
+│   ├── profile.md
+│   ├── preferences.md
+│   ├── philosophy.md
+│   └── writing-style.md
+│
+├── config/                # System configuration
+│   └── schedules.json     # Workflow schedules
+│
+├── logs/                  # Execution logs
+│   ├── daily/             # Day summaries
+│   ├── team/              # Team reports
+│   └── errors/            # Error logs
+│
+├── state/                 # Runtime state
+│   └── system-loop-state.json
+│
+└── secrets/               # Credentials (gitignored)
 ```
 
 ---
@@ -197,47 +283,31 @@ Elio OS - персональная AI Operating System с Claude (Opus 4.5) ка
 
 | Aspect | Implementation |
 |--------|----------------|
-| Credentials | Stored in `/root/.claude/secrets/` (gitignored) |
-| API Access | OAuth2 for Google, Bot tokens for Telegram/Slack |
-| Human Review | Required for all outgoing communications |
-| Audit Log | All actions logged to `/logs/` |
+| Credentials | `/secrets/` directory (gitignored) |
+| API Access | OAuth2 (Google), Bot tokens, API keys |
+| Human Review | Required for outgoing communications |
+| Audit Log | All actions logged to database |
+| Permissions | Role-based (CTO can code, CPO can docs) |
 
 ---
 
 ## Deployment
 
 ```bash
-# Server requirements
-OS: Ubuntu 24.04 (or any Linux)
+# Server
+OS: Ubuntu 24.04 VPS
+Services: Redis, PostgreSQL (Supabase)
 
-# Services
-systemctl status elio-bot    # Telegram bot
-journalctl -u elio-bot -f    # Logs
+# Cron (hourly orchestration)
+0 * * * * /root/.claude/scripts/system-loop.sh
 
 # MCP Server
-cd mcp-server && npm run build && node dist/index.js
+cd mcp-server && bun run build && bun run start
+
+# Check status
+redis-cli ping
+curl $SUPABASE_URL/rest/v1/
 ```
-
----
-
-## What's Next (Roadmap)
-
-### Short-term
-- [ ] Connect Telegram bot to workflows
-- [ ] Implement scheduled triggers (cron)
-- [ ] Add context/people/ profiles
-- [ ] Create company context files
-
-### Medium-term
-- [ ] Voice interface (Whisper + TTS)
-- [ ] Mobile app (React Native)
-- [ ] Multi-user support
-- [ ] Workflow builder UI
-
-### Long-term
-- [ ] Autonomous mode (minimal human review for trusted actions)
-- [ ] Learning from interactions (fine-tuning prompts)
-- [ ] Integration marketplace
 
 ---
 
@@ -245,23 +315,52 @@ cd mcp-server && npm run build && node dist/index.js
 
 | Metric | Value |
 |--------|-------|
-| Source Files | 103 |
-| Lines of Code | 12,360 |
-| MCP Tools | 35+ |
-| Skills | 4 |
-| Workflows | 5 |
-| Integrations | 11 |
-| Context Files | 4 core + extensible |
+| TypeScript Files | 5,350+ |
+| Lines of Code | 149,000+ (MCP server) |
+| MCP Adapters | 16 |
+| MCP Tools | 50+ |
+| Skills | 8 |
+| Workflows | 9 |
+| AI Team Members | 3 (CTO, CPO, CEO) |
+| Database Tables | 8 |
 
 ---
 
-## Why This Architecture?
+## What's New (v3.2.0)
 
-1. **Modular** - Add new skills/workflows without touching core
-2. **Transparent** - Every step is documented in .md files
-3. **Debuggable** - Clear data flow, comprehensive logging
-4. **Scalable** - Lazy loading prevents context bloat
-5. **Human-centric** - AI assists, human decides
+### Added
+- **AI Team** — CTO, CPO, CEO agents with nightly schedule
+- **System Loop** — Universal hourly orchestration
+- **Day Review** — Automated data collection (errors, git, conversations)
+- **Chain Reading** — Agents read each other's output
+- **Backlog System** — Database-backed with Notion sync
+- **Consilium** — Multi-model code review (CTO-triggered)
+- **Conversation Logger** — Extract user messages from sessions
+
+### Architecture Changes
+- Moved from standalone cron jobs to unified System Loop
+- Added collectors concept (run before agents)
+- Implemented chain of responsibility pattern
+- Database-first backlog management
+
+---
+
+## Roadmap
+
+### Short-term
+- [ ] Voice interface (Whisper + TTS)
+- [ ] Eval sets infrastructure
+- [ ] Dashboard for metrics
+
+### Medium-term
+- [ ] Mobile app
+- [ ] Multi-user support
+- [ ] Workflow builder UI
+
+### Long-term
+- [ ] Autonomous mode
+- [ ] Fine-tuning on interactions
+- [ ] Integration marketplace
 
 ---
 

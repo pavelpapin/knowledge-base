@@ -45,7 +45,23 @@ export async function runSkill(
   skillName: string,
   args: string[]
 ): Promise<SkillResult> {
+  // SECURITY: Validate skillName to prevent path traversal
+  // Only allow alphanumeric, dash, underscore
+  if (!/^[a-zA-Z0-9_-]+$/.test(skillName)) {
+    logger.warn(`Invalid skill name attempted: ${skillName}`);
+    return { success: false, error: `Invalid skill name: ${skillName}` };
+  }
+
+  // Double-check: resolved path must be within SKILLS_DIR
   const skillDir = path.join(SKILLS_DIR, skillName);
+  const resolvedSkillDir = path.resolve(skillDir);
+  const resolvedSkillsDir = path.resolve(SKILLS_DIR);
+
+  if (!resolvedSkillDir.startsWith(resolvedSkillsDir + path.sep)) {
+    logger.warn(`Path traversal attempt blocked: ${skillName}`);
+    return { success: false, error: `Invalid skill path: ${skillName}` };
+  }
+
   const runScript = path.join(skillDir, 'run.sh');
 
   if (!fs.existsSync(runScript)) {

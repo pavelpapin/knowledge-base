@@ -1,31 +1,30 @@
 {
   "name": "elio-os",
-  "version": "3.0.0",
+  "version": "3.2.0",
   "description": "Elio OS - AI Operating System",
   "private": true,
-  "workspaces": [
-    "core",
-    "mcp-server",
-    "elio",
-    "gtd",
-    "scheduler",
-    "headless",
-    "context-graph",
-    "self-improvement"
-  ],
   "scripts": {
-    "build": "turbo build",
-    "build:all": "npm run build --workspaces --if-present",
-    "clean": "turbo clean",
-    "dev": "turbo dev",
-    "typecheck": "turbo typecheck"
+    "build": "pnpm -r build",
+    "build:workflow": "pnpm --filter @elio/workflow build",
+    "build:agent-runner": "pnpm --filter @elio/agent-runner build",
+    "build:worker": "pnpm --filter @elio/worker build",
+    "clean": "pnpm -r clean",
+    "dev": "pnpm -r dev",
+    "dev:worker": "pnpm --filter @elio/worker dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:integration": "pnpm --filter @elio/workflow test:integration",
+    "health": "npx tsx scripts/health-check.ts",
+    "verify": "pnpm build && pnpm test:integration && pnpm health",
+    "worker:start": "docker compose up -d redis && pnpm --filter @elio/worker start"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "turbo": "^2.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "tsx": "^4.0.0",
+    "vitest": "^2.0.0"
   },
-  "packageManager": "npm@10.0.0",
+  "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=20.0.0"
   }

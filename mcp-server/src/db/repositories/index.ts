@@ -11,6 +11,7 @@ import { TaskRepository } from './task.repository.js';
 import { PersonRepository } from './person.repository.js';
 import { AuditRepository } from './audit.repository.js';
 import { StateRepository } from './state.repository.js';
+import { BacklogRepository } from './backlog.repository.js';
 
 export * from './base.repository.js';
 export * from './workflow.repository.js';
@@ -20,6 +21,7 @@ export * from './task.repository.js';
 export * from './person.repository.js';
 export * from './audit.repository.js';
 export * from './state.repository.js';
+export * from './backlog.repository.js';
 
 export interface Repositories {
   workflow: WorkflowRepository;
@@ -29,6 +31,7 @@ export interface Repositories {
   person: PersonRepository;
   audit: AuditRepository;
   state: StateRepository;
+  backlog: BacklogRepository;
 }
 
 let repositories: Repositories | null = null;
@@ -41,7 +44,8 @@ export function createRepositories(client: SupabaseClient): Repositories {
     task: new TaskRepository(client),
     person: new PersonRepository(client),
     audit: new AuditRepository(client),
-    state: new StateRepository(client)
+    state: new StateRepository(client),
+    backlog: new BacklogRepository(client)
   };
 }
 
