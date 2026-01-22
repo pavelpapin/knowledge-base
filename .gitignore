@@ -54,6 +54,10 @@ mac-backup/
 research-outputs/
 research/
 
+# Generated outputs
+projects/
+agents/*/reports/
+
 # Settings
 settings.json
 settings.local.json
