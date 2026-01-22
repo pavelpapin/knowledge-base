@@ -118,6 +118,119 @@
 
 ---
 
+### Stage 2.5: Infrastructure Health Check (DevOps)
+
+**Purpose:** Мониторинг системных ресурсов и стабильности процессов.
+
+**Check for:**
+
+| Resource | Warning | Critical | Command |
+|----------|---------|----------|---------|
+| Disk | >70% | >85% | `df -h / \| awk 'NR==2 {print $5}'` |
+| RAM | >80% | >90% | `free -m \| awk '/Mem:/ {printf "%.0f", $3/$2*100}'` |
+| Swap | >50% | >70% | `free -m \| awk '/Swap:/ {printf "%.0f", $3/$2*100}'` |
+| OOM Kills | >0 (24h) | >0 (1h) | `dmesg \| grep -i "oom" \| wc -l` |
+| Failed Services | >0 | - | `systemctl --failed --no-pager` |
+
+**Detailed Checks:**
+
+```bash
+# 1. Disk Usage
+df -h / | awk 'NR==2 {gsub(/%/,""); if ($5 > 85) print "CRITICAL"; else if ($5 > 70) print "WARNING"}'
+
+# 2. Memory Usage
+free -m | awk '/Mem:/ {usage=$3/$2*100; if (usage > 90) print "CRITICAL"; else if (usage > 80) print "WARNING"}'
+
+# 3. Swap Activity
+free -m | awk '/Swap:/ {if ($2 > 0) {usage=$3/$2*100; if (usage > 70) print "CRITICAL"; else if (usage > 50) print "WARNING"}}'
+
+# 4. OOM Kills (last 24h)
+dmesg -T | grep -i "oom" | grep "$(date +%Y-%m-%d)" | wc -l
+
+# 5. Top Memory Consumers
+ps aux --sort=-%mem | head -10
+
+# 6. Disk Space Hogs (if critical)
+du -sh ~/.cache/* 2>/dev/null | sort -hr | head -10
+
+# 7. Failed systemd services
+systemctl --failed --no-pager
+```
+
+**Auto-Fix Actions:**
+
+| Condition | Action | Command |
+|-----------|--------|---------|
+| Disk >85% | Clear pip cache | `rm -rf ~/.cache/pip/*` |
+| Disk >85% | Clear playwright | `rm -rf ~/.cache/ms-playwright/*` |
+| Disk >85% | Clear npm cache | `npm cache clean --force` |
+| Disk >85% | Vacuum journal | `journalctl --vacuum-size=100M` |
+| Service failed | Restart service | `systemctl restart <service>` |
+
+**Output:**
+
+```json
+{
+  "infrastructure": {
+    "disk": {
+      "usage_percent": 45,
+      "free_gb": 12.5,
+      "status": "healthy"
+    },
+    "ram": {
+      "usage_percent": 67,
+      "used_gb": 2.7,
+      "total_gb": 3.8,
+      "status": "warning"
+    },
+    "swap": {
+      "usage_percent": 42,
+      "used_mb": 841,
+      "total_mb": 2048,
+      "status": "warning"
+    },
+    "oom_kills_24h": 0,
+    "failed_services": [],
+    "top_memory_processes": [
+      {"name": "claude", "rss_mb": 1084, "percent": 27}
+    ]
+  },
+  "auto_fixes_applied": [
+    {"action": "cleared pip cache", "freed_mb": 4100}
+  ],
+  "alerts": [
+    {"level": "warning", "message": "RAM usage at 67%"}
+  ]
+}
+```
+
+**Alerting Thresholds:**
+
+```
+Disk:
+  - 70% → Log warning
+  - 85% → Auto-cleanup + Telegram alert
+  - 95% → CRITICAL alert, stop non-essential processes
+
+RAM:
+  - 80% → Log warning
+  - 90% → Telegram alert
+  - 95% → Graceful shutdown of agents
+
+Swap:
+  - 50% → Log warning (indicates RAM pressure)
+  - 70% → Investigate memory leak
+```
+
+**Recommendations to Generate:**
+
+1. If disk >70%: "Consider clearing caches or upgrading storage"
+2. If RAM consistently >80%: "Consider upgrading VPS or optimizing memory usage"
+3. If swap active >50%: "RAM pressure detected, investigate memory-heavy processes"
+4. If OOM kills >0: "CRITICAL: Process killed by OOM, set memory limits"
+
+---
+
 ### Stage 3: Security Scan
 
 **Check for:**

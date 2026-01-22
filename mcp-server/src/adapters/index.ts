@@ -20,6 +20,7 @@ import { sqlAdapter } from './sql/index.js';
 import { webscrapingAdapter } from './webscraping/index.js';
 import { agentsAdapter } from './agents/index.js';
 import { backlogAdapter } from './backlog/index.js';
+import { systemAdapter } from './system/index.js';
 
 export const adapters: Adapter[] = [
   gmailAdapter,
@@ -37,7 +38,8 @@ export const adapters: Adapter[] = [
   sqlAdapter,
   webscrapingAdapter,
   agentsAdapter,
-  backlogAdapter
+  backlogAdapter,
+  systemAdapter
 ];
 
 export {
@@ -56,5 +58,6 @@ export {
   sqlAdapter,
   webscrapingAdapter,
   agentsAdapter,
-  backlogAdapter
+  backlogAdapter,
+  systemAdapter
 };

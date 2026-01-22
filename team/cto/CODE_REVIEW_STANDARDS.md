@@ -379,4 +379,101 @@ const name = user!.name;
 
 ---
 
-*Last updated: 2026-01-21*
+## 11. Infrastructure & DevOps Standards
+
+### Resource Monitoring
+
+Каждую ночь CTO проверяет состояние инфраструктуры:
+
+| Resource | Warning | Critical | Auto-Fix |
+|----------|---------|----------|----------|
+| Disk | >70% | >85% | Clear caches |
+| RAM | >80% | >90% | Alert |
+| Swap | >50% | >70% | Alert |
+| OOM Kills | >0 | - | Investigate |
+
+### Process Management
+
+**Требования к production процессам:**
+
+```ini
+# Каждый сервис ДОЛЖЕН иметь systemd unit с:
+[Service]
+# 1. Auto-restart
+Restart=on-failure
+RestartSec=10
+
+# 2. Resource limits
+MemoryAccounting=yes
+MemoryMax=2G
+CPUQuota=80%
+
+# 3. OOM protection
+OOMScoreAdjust=-500
+```
+
+### Disk Cleanup Policy
+
+**Auto-cleanup при disk >85%:**
+
+| Directory | Max Age | Action |
+|-----------|---------|--------|
+| `~/.cache/pip/` | 7 days | Delete |
+| `~/.cache/ms-playwright/` | 30 days | Delete if unused |
+| `~/.npm/_cacache/` | 14 days | Trim |
+| `/var/log/journal/` | 7 days | Vacuum |
+| `/tmp/` | 1 day | Clear |
+
+### Health Check Endpoints
+
+**Каждый сервис ДОЛЖЕН экспонировать:**
+
+```typescript
+// GET /health
+interface HealthResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  version: string;
+  uptime: number;
+  checks: {
+    database: boolean;
+    memory: boolean;  // RSS < 80% of limit
+    dependencies: boolean;
+  };
+}
+```
+
+### OOM Prevention Checklist
+
+- [ ] `vm.overcommit_memory=2` in sysctl.conf
+- [ ] Memory limits set for all services
+- [ ] OOM score adjusted for critical processes
+- [ ] Swap configured as safety net
+- [ ] Monitoring alerts at 80% RAM
+
+### Infrastructure Review Output
+
+```json
+{
+  "infrastructure_health": {
+    "status": "warning",
+    "disk_percent": 45,
+    "ram_percent": 67,
+    "swap_percent": 42,
+    "oom_kills_24h": 0,
+    "failed_services": 0
+  },
+  "process_compliance": {
+    "services_with_limits": 3,
+    "services_without_limits": 1,
+    "services_protected_oom": 2
+  },
+  "recommendations": [
+    "Set memory limit for mcp-server",
+    "RAM usage trending high - monitor"
+  ]
+}
+```
+
+---
+
+*Last updated: 2026-01-22*
