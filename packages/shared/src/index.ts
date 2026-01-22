@@ -16,6 +16,9 @@ export {
   type LogLevel,
 } from './logger.js'
 
+// Re-export store
+export { createStore, type Store } from './store.js'
+
 /**
  * Root directory for Elio OS
  */
@@ -43,9 +46,6 @@ export const paths = {
   /** Context directory */
   context: path.join(ELIO_ROOT, 'context'),
 
-  /** Logs directory */
-  logs: path.join(ELIO_ROOT, 'logs'),
-
   /** Secrets directory */
   secrets: path.join(ELIO_ROOT, 'secrets'),
 
@@ -69,6 +69,28 @@ export const paths = {
     dir: path.join(ELIO_ROOT, 'data'),
     /** NotebookLM sources */
     notebooklmSources: path.join(ELIO_ROOT, 'data', 'notebooklm-sources'),
+    /** Scheduler data */
+    scheduler: path.join(ELIO_ROOT, 'data', 'scheduler'),
+    /** GTD data */
+    gtd: path.join(ELIO_ROOT, 'data', 'gtd'),
+    /** Headless data */
+    headless: path.join(ELIO_ROOT, 'data', 'headless'),
+    /** Context graph data */
+    contextGraph: path.join(ELIO_ROOT, 'data', 'context-graph'),
+    /** Self improvement data */
+    selfImprovement: path.join(ELIO_ROOT, 'data', 'self-improvement'),
+  },
+
+  /** Log paths */
+  logs: {
+    /** Base logs directory */
+    dir: path.join(ELIO_ROOT, 'logs'),
+    /** Scheduler logs */
+    scheduler: path.join(ELIO_ROOT, 'logs', 'scheduler'),
+    /** Daily logs */
+    daily: path.join(ELIO_ROOT, 'logs', 'daily'),
+    /** Team logs */
+    team: path.join(ELIO_ROOT, 'logs', 'team'),
   },
 
   /** MCP server directory */
@@ -85,6 +107,12 @@ export const paths = {
 
   /** Core directory */
   core: path.join(ELIO_ROOT, 'core'),
+
+  /** CLAUDE.md file */
+  claudeMd: path.join(ELIO_ROOT, 'CLAUDE.md'),
+
+  /** Team directory */
+  team: path.join(ELIO_ROOT, 'team'),
 } as const
 
 /**

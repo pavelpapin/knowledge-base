@@ -11,6 +11,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@elio/shared": "*"
+    "@elio/shared": "workspace:*"
   }
 }
