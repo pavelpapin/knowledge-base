@@ -200,21 +200,63 @@ Check with multiple models (Claude, GPT-4, Groq) and:
 
 ---
 
-### Stage 6: Backlog Update
+### Stage 6: Backlog Update (ОБЯЗАТЕЛЬНО)
+
+**CRITICAL:** Каждый найденный issue, который НЕ был auto-fixed, ДОЛЖЕН быть добавлен в backlog!
 
 **Actions:**
-1. Добавить найденные issues в Technical Backlog
-2. Обновить статус текущих задач
-3. Приоритизировать по impact
+1. Для каждого issue вызвать `elio_backlog_create`
+2. Обновить статус выполненных задач через `elio_backlog_update`
+3. Получить текущий бэклог через `elio_backlog_list`
 
+**Tool calls (ОБЯЗАТЕЛЬНЫЕ):**
+
+```typescript
+// 1. Добавить новый issue в бэклог
+elio_backlog_create({
+  title: "Split large file adapters/notion.ts (312 lines)",
+  type: "technical",
+  priority: "medium",          // critical | high | medium | low
+  category: "architecture",    // architecture | security | observability | performance | tech-debt
+  description: "File exceeds 200 lines limit. Split into api.ts, client.ts, types.ts",
+  effort: "m",                 // xs | s | m | l | xl
+  source: "cto_review",
+  sync_to_notion: true
+})
+
+// 2. Обновить статус задачи (если сделано)
+elio_backlog_update({
+  id: "uuid-of-item",
+  status: "done",              // backlog | in_progress | done | blocked | cancelled
+  sync_to_notion: true
+})
+
+// 3. Получить текущий бэклог для отчёта
+elio_backlog_list({
+  type: "technical",
+  status: "backlog",
+  priority: "high"
+})
+
+// 4. Получить статистику
+elio_backlog_stats({})
+```
+
+**Notion Sync:** Автоматический при `sync_to_notion: true`
 **Backlog DB:** `CTO Technical Backlog` (`2ef33fbf-b00e-810b-aea3-cafeff3d9462`)
 
 **Task categories:**
-- `architecture` — структурные изменения
-- `security` — безопасность
-- `observability` — логи, метрики
-- `performance` — оптимизация
-- `tech-debt` — рефакторинг
+- `architecture` — структурные изменения (файлы >200 строк, нарушение SRP)
+- `security` — безопасность (hardcoded secrets, vulnerabilities)
+- `observability` — логи, метрики (missing logs, no error tracking)
+- `performance` — оптимизация (slow queries, N+1)
+- `tech-debt` — рефакторинг (deprecated APIs, outdated deps)
+
+**Priority rules:**
+- `critical` — блокирует работу, security issue
+- `high` — влияет на production, degraded performance
+- `medium` — code quality, maintainability
+- `low` — nice to have, cleanup
 
 ---
 
@@ -345,7 +387,11 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 | Git | `Bash` (git commands) |
 | Notify | `elio_telegram_notify` |
 | Store report | `elio_notion_create_page` |
-| Backlog | `backlog_create`, `backlog_update` |
+| Create backlog item | `elio_backlog_create` |
+| Update backlog item | `elio_backlog_update` |
+| List backlog | `elio_backlog_list` |
+| Backlog stats | `elio_backlog_stats` |
+| Sync with Notion | `elio_backlog_sync` |
 
 ---
 

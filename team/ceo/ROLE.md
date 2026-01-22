@@ -80,13 +80,46 @@
 
 **Actions:**
 1. Прочитать `/root/.claude/context/philosophy.md` — текущие цели
-2. Посмотреть backlogs CTO/CPO — что в работе
+2. Получить backlogs CTO/CPO через tools — что в работе
 3. Прочитать последние отчёты команды
+
+**Tool calls для получения состояния бэклогов:**
+
+```typescript
+// 1. Статистика по бэклогам
+elio_backlog_stats({})
+// Returns: total active, done, high_priority counts
+
+// 2. Технический бэклог (CTO)
+elio_backlog_list({
+  type: "technical",
+  status: "backlog",
+  limit: 20
+})
+
+// 3. Продуктовый бэклог (CPO)
+elio_backlog_list({
+  type: "product",
+  status: "backlog",
+  limit: 20
+})
+
+// 4. Что сейчас в работе
+elio_backlog_list({
+  status: "in_progress"
+})
+
+// 5. Что заблокировано
+elio_backlog_list({
+  status: "blocked"
+})
+```
 
 **Output:**
 - Где мы сейчас относительно цели
 - Что блокирует прогресс
 - На что тратятся ресурсы
+- Сколько задач в каждом бэклоге
 
 ---
 
@@ -117,30 +150,60 @@ EFF │   DELEGATE      │   DON'T DO      │ EFFORT
 
 ### Stage 3: Assign to Team
 
-**To CTO (Platform Architect):**
-- Архитектурные задачи
-- Инфраструктура, MCP, интеграции
-- Безопасность, observability
-- Performance, reliability
+**Tool calls для назначения задач:**
 
-**To CPO (Learning Loop):**
-- Продуктовые гипотезы
-- Quality metrics, eval sets
-- User scenarios
-- Acceptance criteria
+```typescript
+// Задача для CTO (type: "technical")
+elio_backlog_create({
+  title: "Add rate limiting to LinkedIn adapter",
+  type: "technical",
+  priority: "high",
+  category: "performance",
+  description: "LinkedIn API gets rate limited. Add exponential backoff.",
+  effort: "m",
+  source: "manual",  // CEO assigns manually
+  sync_to_notion: true
+})
 
-**Task format:**
-```json
-{
-  "title": "Clear outcome-focused name",
-  "why": "Business value / metric impact",
-  "what": "Concrete deliverable",
-  "constraints": ["time", "scope", "quality"],
-  "success_criteria": ["measurable outcomes"],
-  "priority": "P0/P1/P2",
-  "assigned_by": "ceo"
-}
+// Задача для CPO (type: "product")
+elio_backlog_create({
+  title: "Improve deep-research completeness to 85%",
+  type: "product",
+  priority: "critical",
+  category: "quality",
+  description: "Current completeness is 65%. Target: 85% on eval set.",
+  effort: "l",
+  impact: "high",
+  source: "manual",
+  sync_to_notion: true
+})
+
+// Резать задачу (cut scope)
+elio_backlog_update({
+  id: "uuid-of-low-priority-item",
+  status: "cancelled",
+  sync_to_notion: true
+})
+
+// Поднять приоритет
+elio_backlog_update({
+  id: "uuid-of-item",
+  priority: "critical",
+  sync_to_notion: true
+})
 ```
+
+**To CTO (Platform Architect) — type: "technical":**
+- Архитектурные задачи → category: "architecture"
+- Инфраструктура, MCP → category: "tech-debt"
+- Безопасность → category: "security"
+- Performance, reliability → category: "performance"
+
+**To CPO (Learning Loop) — type: "product":**
+- Продуктовые гипотезы → category: "feature"
+- Quality metrics, eval sets → category: "eval"
+- User scenarios → category: "spec"
+- UX improvements → category: "ux"
 
 ---
 
@@ -257,9 +320,12 @@ if (!result.valid) {
 |------|------|
 | Read context | `Read`, `Glob` |
 | Read team reports | `Read` |
-| Analyze backlogs | `backlog_list`, `backlog_stats` |
-| Create/update tasks | `backlog_create`, `backlog_update` |
-| Cut tasks | `backlog_complete` (status: cancelled) |
+| Analyze backlogs | `elio_backlog_list`, `elio_backlog_stats` |
+| Create tasks | `elio_backlog_create` |
+| Update tasks | `elio_backlog_update` |
+| Cut tasks (cancel) | `elio_backlog_update` with status: "cancelled" |
+| Mark done | `elio_backlog_complete` |
+| Sync with Notion | `elio_backlog_sync` |
 | Notify | `elio_telegram_notify` |
 | Store report | `elio_notion_create_page` |
 

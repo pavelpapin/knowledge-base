@@ -236,21 +236,64 @@ Storage: `/root/.claude/core/eval/`
 
 ---
 
-### Stage 6: Backlog Update
+### Stage 6: Backlog Update (ОБЯЗАТЕЛЬНО)
+
+**CRITICAL:** Каждое предложенное improvement ДОЛЖНО быть добавлено в backlog!
 
 **Actions:**
-1. Добавить improvements в Product Backlog
-2. Приоритизировать по impact/effort
-3. Link к конкретным failures/feedback
+1. Для каждого improvement вызвать `elio_backlog_create`
+2. Обновить статус выполненных задач через `elio_backlog_update`
+3. Получить текущий бэклог через `elio_backlog_list`
 
+**Tool calls (ОБЯЗАТЕЛЬНЫЕ):**
+
+```typescript
+// 1. Добавить improvement в бэклог
+elio_backlog_create({
+  title: "Add context about company size in deep-research",
+  type: "product",
+  priority: "high",            // critical | high | medium | low
+  category: "quality",         // quality | eval | spec | feature | ux
+  description: "Users frequently ask for company size info. Add this to research output.",
+  effort: "s",                 // xs | s | m | l | xl
+  impact: "high",              // high | medium | low (product-specific)
+  source: "cpo_review",
+  source_quote: "Хочу чтобы был размер компании",  // original user quote
+  sync_to_notion: true
+})
+
+// 2. Обновить статус задачи (если сделано)
+elio_backlog_update({
+  id: "uuid-of-item",
+  status: "done",              // backlog | in_progress | done | blocked | cancelled
+  sync_to_notion: true
+})
+
+// 3. Получить текущий бэклог для анализа
+elio_backlog_list({
+  type: "product",
+  status: "backlog"
+})
+
+// 4. Получить статистику
+elio_backlog_stats({})
+```
+
+**Notion Sync:** Автоматический при `sync_to_notion: true`
 **Backlog DB:** `CPO Product Backlog` (`2ef33fbf-b00e-813c-b77a-c9ab4d9450c3`)
 
 **Task categories:**
-- `quality` — улучшение качества
-- `eval` — новые eval sets
-- `spec` — уточнение требований
-- `feature` — новые возможности
-- `ux` — удобство использования
+- `quality` — улучшение качества (accuracy, completeness)
+- `eval` — новые eval sets (test cases, edge cases)
+- `spec` — уточнение требований (unclear behavior)
+- `feature` — новые возможности (user requests)
+- `ux` — удобство использования (friction points)
+
+**Priority rules based on feedback:**
+- `critical` — блокирует пользователя, частые жалобы
+- `high` — влияет на quality metrics, multiple users
+- `medium` — single user request, nice improvement
+- `low` — edge case, rare scenario
 
 ---
 
@@ -363,7 +406,11 @@ if (!result.valid) {
 | Update specs | `Edit` |
 | Notify | `elio_telegram_notify` |
 | Store report | `elio_notion_create_page` |
-| Backlog | `backlog_create`, `backlog_update` |
+| Create backlog item | `elio_backlog_create` |
+| Update backlog item | `elio_backlog_update` |
+| List backlog | `elio_backlog_list` |
+| Backlog stats | `elio_backlog_stats` |
+| Sync with Notion | `elio_backlog_sync` |
 
 ---
 

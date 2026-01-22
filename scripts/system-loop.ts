@@ -435,6 +435,24 @@ This file contains:
 
 Use this data to inform your Health Check and Architecture Review stages.
 If errors.total > 10, this triggers Multi-Model Review Decision.
+
+## CRITICAL: Backlog Update Required
+
+For EVERY issue you find that is NOT auto-fixed, you MUST call:
+\`\`\`
+elio_backlog_create({
+  title: "Description of issue",
+  type: "technical",
+  priority: "high",  // critical | high | medium | low
+  category: "architecture",  // architecture | security | observability | performance | tech-debt
+  description: "Details...",
+  effort: "m",  // xs | s | m | l | xl
+  source: "cto_review",
+  sync_to_notion: true
+})
+\`\`\`
+
+At the end, sync backlog: \`elio_backlog_sync({ type: "technical" })\`
 `
   } else if (memberId === 'cpo') {
     // CPO reads Day Collector + CTO report
@@ -457,6 +475,26 @@ Before starting your review, READ these files:
    - System health status
 
 Use this data to understand what happened today from user and technical perspectives.
+
+## CRITICAL: Backlog Update Required
+
+For EVERY improvement you propose, you MUST call:
+\`\`\`
+elio_backlog_create({
+  title: "Improvement description",
+  type: "product",
+  priority: "high",  // critical | high | medium | low
+  category: "quality",  // quality | eval | spec | feature | ux
+  description: "Details...",
+  effort: "m",  // xs | s | m | l | xl
+  impact: "high",  // high | medium | low
+  source: "cpo_review",
+  source_quote: "Original user feedback if applicable",
+  sync_to_notion: true
+})
+\`\`\`
+
+At the end, sync backlog: \`elio_backlog_sync({ type: "product" })\`
 `
   } else if (memberId === 'ceo') {
     // CEO reads CTO + CPO reports
@@ -479,11 +517,54 @@ Before making decisions, READ these files:
    - Failure analysis
    - Improvements proposed
 
-3. Current Backlogs (use backlog_list tool):
-   - Technical backlog status
-   - Product backlog status
+3. Current Backlogs - CALL THESE TOOLS:
+   \`\`\`
+   elio_backlog_stats({})  // Get overview
+   elio_backlog_list({ type: "technical", status: "backlog" })
+   elio_backlog_list({ type: "product", status: "backlog" })
+   elio_backlog_list({ status: "blocked" })  // What's stuck?
+   \`\`\`
 
-Base your strategic decisions on what CTO and CPO discovered tonight.
+## CRITICAL: Backlog Management Required
+
+For EVERY decision you make:
+
+1. **Assign new task to CTO:**
+   \`\`\`
+   elio_backlog_create({
+     title: "Task description",
+     type: "technical",
+     priority: "high",
+     category: "architecture",
+     description: "What to do and why",
+     source: "manual",
+     sync_to_notion: true
+   })
+   \`\`\`
+
+2. **Assign new task to CPO:**
+   \`\`\`
+   elio_backlog_create({
+     title: "Task description",
+     type: "product",
+     priority: "high",
+     category: "quality",
+     description: "What to do and why",
+     source: "manual",
+     sync_to_notion: true
+   })
+   \`\`\`
+
+3. **Cut/deprioritize task:**
+   \`\`\`
+   elio_backlog_update({
+     id: "task-uuid",
+     status: "cancelled",  // or priority: "low"
+     sync_to_notion: true
+   })
+   \`\`\`
+
+At the end, sync all backlogs: \`elio_backlog_sync({})\`
 `
   }
 
@@ -498,10 +579,12 @@ ${roleContent}
 Execute your review now. Follow all stages in your workflow.
 
 At the end, you MUST:
-1. Generate your report in the specified format
-2. Save it to Notion (use elio_notion_create_page with your database ID)
-3. Send a summary via Telegram (use elio_telegram_notify)
-4. Save locally to /root/.claude/logs/team/${memberId}/${date}.md
+1. Add ALL issues/improvements to backlog (use elio_backlog_create)
+2. Sync backlog with Notion (use elio_backlog_sync)
+3. Generate your report in the specified format
+4. Save it to Notion (use elio_notion_create_page with your database ID)
+5. Send a summary via Telegram (use elio_telegram_notify)
+6. Save locally to /root/.claude/logs/team/${memberId}/${date}.md
 
 Current time: ${now.toISOString()}
 Timezone: Asia/Tbilisi
