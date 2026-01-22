@@ -981,6 +981,41 @@ async function main(): Promise<void> {
       await new Promise(r => setTimeout(r, 3000))
     }
 
+    // Run backlog sync and save reports if team members were executed
+    const hasTeamMembers = results.some(r => r.item.type === 'team-member')
+    if (hasTeamMembers) {
+      const { execSync } = await import('child_process')
+      const today = now.toISOString().split('T')[0]
+
+      // Sync backlog items to Notion
+      log('Running backlog sync to Notion...')
+      try {
+        execSync('npx tsx /root/.claude/scripts/sync-backlog-to-notion.ts', {
+          cwd: '/root/.claude',
+          timeout: 120000,
+          encoding: 'utf-8'
+        })
+        log('Backlog sync complete')
+      } catch (err) {
+        log(`Backlog sync failed: ${err}`, 'error')
+      }
+
+      // Save team reports to Notion
+      log('Saving team reports to Notion...')
+      for (const reportType of ['cto', 'cpo', 'ceo']) {
+        try {
+          execSync(`npx tsx /root/.claude/scripts/save-report-to-notion.ts ${reportType} ${today}`, {
+            cwd: '/root/.claude',
+            timeout: 60000,
+            encoding: 'utf-8'
+          })
+          log(`${reportType.toUpperCase()} report saved to Notion`)
+        } catch (err) {
+          log(`Failed to save ${reportType} report: ${err}`, 'error')
+        }
+      }
+    }
+
     // Send completion summary
     const summary = results.map(r => {
       const status = r.result.success ? '✅' : '❌'

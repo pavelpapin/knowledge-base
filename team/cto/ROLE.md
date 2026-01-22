@@ -229,6 +229,51 @@ Swap:
 3. If swap active >50%: "RAM pressure detected, investigate memory-heavy processes"
 4. If OOM kills >0: "CRITICAL: Process killed by OOM, set memory limits"
 
+**Deep Analysis (if issues found):**
+
+```bash
+# What's eating disk space?
+du -sh /usr/local/lib/* 2>/dev/null | sort -hr | head -5
+du -sh ~/.cache/* 2>/dev/null | sort -hr | head -5
+du -sh /var/log/* 2>/dev/null | sort -hr | head -5
+
+# Unused swap files?
+ls -lah /swapfile* 2>/dev/null
+swapon --show
+
+# Large Python packages (often ML libraries)?
+du -sh /usr/local/lib/python*/dist-packages/* 2>/dev/null | sort -hr | head -10
+
+# Node modules bloat?
+du -sh /root/.claude/*/node_modules 2>/dev/null | sort -hr
+```
+
+**Optimization Actions (propose if needed):**
+
+| Issue | Solution | Savings |
+|-------|----------|---------|
+| NVIDIA/CUDA installed but no GPU | `pip3 uninstall nvidia-*` | ~4GB |
+| PyTorch GPU version | Switch to CPU-only or remove | ~2GB |
+| Multiple swap files | Remove unused | ~2-4GB |
+| Old pip cache | `rm -rf ~/.cache/pip/*` | ~1-4GB |
+| Duplicate playwright | Remove Python version if using Node | ~130MB |
+
+**MCP Tools for Infrastructure:**
+
+| Tool | Purpose |
+|------|---------|
+| `elio_system_health` | MCP server health status |
+| `elio_system_infra` | Full infrastructure metrics |
+| `elio_system_cleanup` | Run disk cleanup script |
+| `elio_system_restart` | Restart allowed services |
+
+**Script shortcut:**
+```bash
+/root/.claude/scripts/infra-health.sh        # Human-readable
+/root/.claude/scripts/infra-health.sh --json # For automation
+/root/.claude/scripts/disk-cleanup.sh        # Auto-cleanup
+```
+
 ---
 
 ### Stage 3: Security Scan
@@ -386,6 +431,23 @@ elio_backlog_stats({})
 | Database | 🟢 | 12ms avg latency |
 | External APIs | 🟡 | LinkedIn rate limited |
 
+## 🖥️ Infrastructure Status
+| Resource | Usage | Status |
+|----------|-------|--------|
+| Disk | 43% (14GB free) | 🟢 |
+| RAM | 55% (2.1GB/3.8GB) | 🟢 |
+| Swap | 30% (600MB/2GB) | 🟢 |
+
+### Top Memory Consumers
+1. claude (11%) - expected
+2. node (8%) - expected
+3. tsserver (7%) - expected
+
+### Disk Analysis (if >70%)
+- /usr/local/lib: X GB
+- ~/.cache: X GB
+- Recommendation: {action}
+
 ## 🔍 Architecture Review
 - Files analyzed: N
 - Issues found: N
@@ -401,6 +463,7 @@ elio_backlog_stats({})
 |---|------|-------|--------|
 | 1 | Split large file | adapters/notion.ts | abc123 |
 | 2 | Extract config | perplexity/api.ts | def456 |
+| 3 | Disk cleanup | ~/.cache/pip | freed 4GB |
 
 ## 📋 Added to Backlog
 1. [P1] Add circuit breaker to LinkedIn adapter
@@ -413,6 +476,7 @@ elio_backlog_stats({})
 - Uptime: 99.9%
 - Avg response time: 230ms
 - Errors (24h): 5
+- OOM kills (24h): 0
 ```
 
 ---
@@ -494,6 +558,9 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 | Task | Tool |
 |------|------|
 | Health check | `elio_auto_test`, `elio_database_health` |
+| Infrastructure | `elio_system_health`, `elio_system_infra` |
+| Disk cleanup | `elio_system_cleanup` |
+| Service restart | `elio_system_restart` |
 | Code review | `elio_code_review` |
 | Read/analyze | `Read`, `Glob`, `Grep` |
 | Auto-fix | `Edit`, `Write` |
@@ -517,6 +584,10 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 - Config extraction
 - Dead code removal
 - Import cleanup
+- **Infrastructure:**
+  - Disk cleanup (pip cache, npm cache, logs) when >85%
+  - Journal vacuum
+  - Restart failed services
 
 ### Propose (на approval)
 - Архитектурные изменения
@@ -546,6 +617,8 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 
 - `/cto` — full review
 - `/cto health` — only health check
+- `/cto infra` — infrastructure & resources check
 - `/cto security` — only security scan
 - `/cto fix` — run auto-fixes
+- `/cto cleanup` — disk cleanup
 - `cto review` — natural language trigger
