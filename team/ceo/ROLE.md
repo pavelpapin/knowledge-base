@@ -205,7 +205,44 @@ EFF │   DELEGATE      │   DON'T DO      │ EFFORT
 
 ---
 
-### Stage 6: Deliver
+### Stage 6: Quality Gate (ОБЯЗАТЕЛЬНО)
+
+**CRITICAL:** Report MUST pass validation before publishing!
+
+**Actions:**
+1. Run validator on generated report
+2. Check for red flags (TBD, missing decisions, empty metrics)
+3. Ensure all required sections present with real data
+
+**Validation script:**
+```typescript
+import { validateReport, formatValidationResult } from '/root/.claude/core/report-validator';
+
+const result = validateReport(reportContent, 'ceo');
+console.log(formatValidationResult(result, 'ceo'));
+
+if (!result.valid) {
+  // Fix issues before publishing
+  throw new Error(`Report invalid: score ${result.score}/100`);
+}
+```
+
+**Minimum requirements:**
+- Score ≥ 60/100
+- No errors (missing required sections)
+- Цель must be specific and measurable
+- Метрики table must have current/target values
+- At least 1 concrete decision or task assignment
+
+**If validation fails:**
+1. Re-read CTO and CPO reports for missing context
+2. Formulate specific decisions based on available data
+3. Re-generate report
+4. Re-validate
+
+---
+
+### Stage 7: Deliver
 
 **Actions:**
 1. Сохранить в Notion (database: CEO Reports)

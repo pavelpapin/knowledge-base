@@ -306,7 +306,44 @@ Storage: `/root/.claude/core/eval/`
 
 ---
 
-### Stage 8: Deliver
+### Stage 8: Quality Gate (ОБЯЗАТЕЛЬНО)
+
+**CRITICAL:** Report MUST pass validation before publishing!
+
+**Actions:**
+1. Run validator on generated report
+2. Check for red flags (TBD, 0 values, empty sections)
+3. Ensure all required sections present with real data
+
+**Validation script:**
+```typescript
+import { validateReport, formatValidationResult } from '/root/.claude/core/report-validator';
+
+const result = validateReport(reportContent, 'cpo');
+console.log(formatValidationResult(result, 'cpo'));
+
+if (!result.valid) {
+  // Fix issues before publishing
+  throw new Error(`Report invalid: score ${result.score}/100`);
+}
+```
+
+**Minimum requirements:**
+- Score ≥ 60/100
+- No errors (missing required sections)
+- If no user data: explicit explanation WHY (not just "0 conversations")
+- Quality metrics must have actual values or "No baseline yet - establishing"
+
+**If validation fails:**
+1. Identify missing data
+2. Check if data sources are accessible
+3. If no data available, document WHY explicitly
+4. Re-generate report with explanations
+5. Re-validate
+
+---
+
+### Stage 9: Deliver
 
 **Actions:**
 1. Сохранить в Notion (database: CPO Reports)

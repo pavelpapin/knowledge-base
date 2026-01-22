@@ -262,7 +262,43 @@ Check with multiple models (Claude, GPT-4, Groq) and:
 
 ---
 
-### Stage 8: GitHub Sync
+### Stage 8: Quality Gate (ОБЯЗАТЕЛЬНО)
+
+**CRITICAL:** Report MUST pass validation before publishing!
+
+**Actions:**
+1. Run validator on generated report
+2. Check for red flags (TBD, 0 values, empty sections)
+3. Ensure all required sections present with real data
+
+**Validation script:**
+```typescript
+import { validateReport, formatValidationResult } from '/root/.claude/core/report-validator';
+
+const result = validateReport(reportContent, 'cto');
+console.log(formatValidationResult(result, 'cto'));
+
+if (!result.valid) {
+  // Fix issues before publishing
+  throw new Error(`Report invalid: score ${result.score}/100`);
+}
+```
+
+**Minimum requirements:**
+- Score ≥ 60/100
+- No errors (missing required sections)
+- No TBD/TODO placeholders
+- All metrics have real values (not 0 or N/A)
+
+**If validation fails:**
+1. Identify missing data
+2. Run additional collection stages
+3. Re-generate report
+4. Re-validate
+
+---
+
+### Stage 9: GitHub Sync
 
 **CRITICAL:** Все изменения должны быть запушены в GitHub!
 
@@ -289,7 +325,7 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 
 ---
 
-### Stage 9: Deliver
+### Stage 10: Deliver
 
 **Actions:**
 1. Сохранить в Notion (database: Nightly CTO Reports)
