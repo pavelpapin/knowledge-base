@@ -99,7 +99,7 @@ export default function Home() {
           </p>
         </FadeIn>
         <FadeIn delay={300} variant="scale">
-          <div className="mt-12 sm:mt-16 lg:-mr-[10%]">
+          <div className="mt-8 sm:mt-10 lg:-mr-[10%]">
             <PerspectiveFrame heroMode fadeDirection="left-bottom">
               <OwnerDashboardMockup />
             </PerspectiveFrame>

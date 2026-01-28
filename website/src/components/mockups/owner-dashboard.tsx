@@ -8,30 +8,30 @@ const stats = [
 ];
 
 const attentionItems = [
-  { client: "Mohammed Al-Rashid", agent: "Artem K.", score: "High", stage: "After viewing", issue: "Follow-up overdue 3 days", time: "3d ago", severity: "red" },
-  { client: "Sarah Thompson", agent: "Maria S.", score: "High", stage: "Negotiation", issue: "Price objection not addressed", time: "1d ago", severity: "amber" },
-  { client: "Ivan Petrov", agent: "Artem K.", score: "Med", stage: "After viewing", issue: "Client questions unanswered", time: "2d ago", severity: "red" },
-  { client: "James Liu", agent: "David R.", score: "High", stage: "Pricing", issue: "SLA breach — 48h no response", time: "4d ago", severity: "red" },
+  { client: "Mohammed Al-R.", agent: "Artem K.", score: "High", stage: "After viewing", issue: "Follow-up overdue 3 days", time: "3d", severity: "red" },
+  { client: "Sarah Thompson", agent: "Maria S.", score: "High", stage: "Negotiation", issue: "Price objection not addressed", time: "1d", severity: "amber" },
+  { client: "Ivan Petrov", agent: "Artem K.", score: "Med", stage: "After viewing", issue: "Client questions unanswered", time: "2d", severity: "red" },
+  { client: "James Liu", agent: "David R.", score: "High", stage: "Pricing", issue: "SLA breach — 48h no response", time: "4d", severity: "red" },
 ];
 
 const insights = [
-  "Deals most often stall after viewings — 4 of 8 attention items are post-viewing",
-  "Follow-ups after pricing discussions take the longest to resolve",
-  "Majority of attention items are waiting on agency action, not client response",
+  "Deals stall after viewings — 4 of 8 attention items are post-viewing",
+  "Follow-ups after pricing take the longest to resolve",
+  "Most attention items wait on agency action, not client",
 ];
 
 function StatCard({ value, label, color }: { value: string; label: string; color: string }) {
   return (
-    <div className="bg-white/[0.03] rounded-lg p-4 border border-white/[0.06]">
-      <p className={`text-[28px] font-semibold ${color}`}>{value}</p>
-      <p className="text-[12px] text-white/30 mt-1">{label}</p>
+    <div className="bg-white/[0.03] rounded-md px-3 py-2.5 border border-white/[0.06]">
+      <p className={`text-[22px] font-semibold leading-none ${color}`}>{value}</p>
+      <p className="text-[10px] text-white/30 mt-1">{label}</p>
     </div>
   );
 }
 
 function SeverityDot({ severity }: { severity: string }) {
   const color = severity === "red" ? "bg-red-400" : "bg-amber-400";
-  return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
+  return <span className={`inline-block w-1.5 h-1.5 rounded-full ${color} shrink-0`} />;
 }
 
 function ScoreLabel({ score }: { score: string }) {
@@ -40,34 +40,34 @@ function ScoreLabel({ score }: { score: string }) {
     Med: "text-amber-400",
     Low: "text-white/30",
   };
-  return <span className={`text-[11px] font-medium ${colors[score]}`}>{score}</span>;
+  return <span className={`text-[10px] font-medium ${colors[score]}`}>{score}</span>;
 }
 
 export function OwnerDashboardMockup() {
   return (
     <div className="rounded-xl border border-white/[0.08] bg-[#0A0A0B] overflow-hidden shadow-2xl">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-white/[0.06] bg-white/[0.02]">
-        <p className="text-[15px] font-medium text-white/80">Deal intelligence for WhatsApp conversations</p>
-        <p className="text-[12px] text-white/30 mt-0.5">Owner view</p>
+      <div className="px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.02]">
+        <p className="text-[13px] font-medium text-white/80">Deal intelligence for WhatsApp conversations</p>
+        <p className="text-[10px] text-white/30 mt-0.5">Owner view</p>
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4">
+      <div className="grid grid-cols-4 gap-2 p-3">
         {stats.map((stat, i) => (
           <StatCard key={i} {...stat} />
         ))}
       </div>
 
       {/* Attention table */}
-      <div className="px-4 pb-4">
-        <div className="bg-white/[0.02] rounded-lg border border-white/[0.06] overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-white/[0.06]">
-            <p className="text-[13px] font-medium text-white/60">Attention required</p>
+      <div className="px-3 pb-2">
+        <div className="bg-white/[0.02] rounded-md border border-white/[0.06] overflow-hidden">
+          <div className="px-3 py-1.5 border-b border-white/[0.06]">
+            <p className="text-[11px] font-medium text-white/60">Attention required</p>
           </div>
 
           {/* Table header */}
-          <div className="grid grid-cols-[100px_60px_45px_70px_1fr_45px] gap-2 px-4 py-2 text-[10px] uppercase tracking-wider text-white/20 border-b border-white/[0.04]">
+          <div className="grid grid-cols-[90px_55px_40px_65px_1fr_30px] gap-1.5 px-3 py-1.5 text-[9px] uppercase tracking-wider text-white/20 border-b border-white/[0.04]">
             <span>Client</span>
             <span>Agent</span>
             <span>Score</span>
@@ -78,31 +78,31 @@ export function OwnerDashboardMockup() {
 
           {/* Rows */}
           {attentionItems.map((item, i) => (
-            <div key={i} className="grid grid-cols-[100px_60px_45px_70px_1fr_45px] gap-2 px-4 py-2.5 border-b border-white/[0.03] last:border-0 items-center">
-              <p className="text-[11px] text-white/70 truncate">{item.client}</p>
-              <p className="text-[10px] text-white/30 truncate">{item.agent}</p>
+            <div key={i} className="grid grid-cols-[90px_55px_40px_65px_1fr_30px] gap-1.5 px-3 py-1.5 border-b border-white/[0.03] last:border-0 items-center">
+              <p className="text-[10px] text-white/70 truncate">{item.client}</p>
+              <p className="text-[9px] text-white/30 truncate">{item.agent}</p>
               <ScoreLabel score={item.score} />
-              <p className="text-[10px] text-white/30 truncate">{item.stage}</p>
-              <div className="flex items-center gap-2 min-w-0">
+              <p className="text-[9px] text-white/30 truncate">{item.stage}</p>
+              <div className="flex items-center gap-1.5 min-w-0">
                 <SeverityDot severity={item.severity} />
-                <p className={`text-[11px] ${item.severity === "red" ? "text-red-400/80" : "text-amber-400/80"}`}>
+                <p className={`text-[10px] truncate ${item.severity === "red" ? "text-red-400/80" : "text-amber-400/80"}`}>
                   {item.issue}
                 </p>
               </div>
-              <p className="text-[10px] text-white/20 text-right">{item.time}</p>
+              <p className="text-[9px] text-white/20 text-right">{item.time}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Weekly insights */}
-      <div className="px-4 pb-4">
-        <div className="bg-white/[0.02] rounded-lg border border-white/[0.06] p-4">
-          <p className="text-[12px] font-medium text-white/50 mb-3">This week</p>
-          <div className="space-y-2">
+      <div className="px-3 pb-3">
+        <div className="bg-white/[0.02] rounded-md border border-white/[0.06] px-3 py-2.5">
+          <p className="text-[10px] font-medium text-white/50 mb-2">This week</p>
+          <div className="space-y-1">
             {insights.map((insight, i) => (
-              <p key={i} className="text-[11px] text-white/30 leading-relaxed">
-                <span className="text-white/20 mr-2">·</span>
+              <p key={i} className="text-[10px] text-white/30 leading-snug">
+                <span className="text-white/20 mr-1.5">·</span>
                 {insight}
               </p>
             ))}
