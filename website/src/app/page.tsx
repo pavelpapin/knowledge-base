@@ -6,7 +6,7 @@ import { StatusLine } from "@/components/status-line";
 import { Section, SectionLabel } from "@/components/section";
 import { LogoMarquee } from "@/components/logo-marquee";
 import { StickyCTA } from "@/components/sticky-cta";
-import { DealVisibilityMockup, SLAViewMockup, ActionQueueMockup, OwnerDashboardMockup } from "@/components/mockups";
+import { DealVisibilityMockup, SLAViewMockup, ActionQueueMockup, OwnerDashboardMockup, PerspectiveFrame } from "@/components/mockups";
 
 /* Logo: "elio." with period, heavier weight, off-white */
 function ElioLogo({ className }: { className?: string }) {
@@ -99,8 +99,10 @@ export default function Home() {
           </p>
         </FadeIn>
         <FadeIn delay={300} variant="scale">
-          <div className="mt-14 sm:mt-20">
-            <OwnerDashboardMockup />
+          <div className="mt-14 sm:mt-20 pb-8">
+            <PerspectiveFrame>
+              <OwnerDashboardMockup />
+            </PerspectiveFrame>
           </div>
         </FadeIn>
       </Section>
