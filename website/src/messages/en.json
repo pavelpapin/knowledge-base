@@ -1,0 +1,232 @@
+{
+  "nav": {
+    "requestPilot": "Request pilot",
+    "seeHow": "See how it works"
+  },
+  "hero": {
+    "line1": "Turn WhatsApp chats into",
+    "line2": "closed deals."
+  },
+  "status": {
+    "lines": [
+      "Fewer lost leads",
+      "Faster response times",
+      "More follow-ups completed",
+      "Clear deal ownership",
+      "Full visibility across your team"
+    ]
+  },
+  "meet": {
+    "label": "Meet Elio",
+    "title": "AI-powered deal assistant for real estate teams.",
+    "desc": "Connects to WhatsApp conversations in real deals. Shows where money is being made, delayed, or lost."
+  },
+  "dealVisibility": {
+    "label": "Deal visibility",
+    "title": "See every deal. Know who moves next.",
+    "desc": "Lead score, deal stage, deal health, and last action. All in one view.",
+    "tags": ["Lead score", "Deal stage", "Deal health", "Last action"]
+  },
+  "quality": {
+    "label": "Quality control",
+    "title": "Track SLAs. Catch problems early.",
+    "desc": "First response time, follow-up speed, missed conversations, and script compliance.",
+    "tags": ["First response SLA", "Follow-up SLA", "Missed follow-ups", "Script compliance"]
+  },
+  "actions": {
+    "label": "Smart actions",
+    "title": "Know exactly what to do next.",
+    "desc": "Priority queue, escalation flags, and weekly action plans for every deal.",
+    "tags": ["Next best step", "Priority queue", "Escalation flags", "Weekly plan"]
+  },
+  "reality": {
+    "label": "Reality check",
+    "title": "Can you answer these three questions right now?",
+    "subtitle": "If even one is a guess, you're losing money right now.",
+    "questions": [
+      "How many deals is your team losing right now because no one followed up?",
+      "Which of your agents has unanswered clients in WhatsApp right now?",
+      "A buyer went quiet two days ago. Do you even know about it?"
+    ],
+    "footer": "Elio gives you these answers automatically. From the conversations already happening."
+  },
+  "dubai": {
+    "label": "Why this matters in Dubai",
+    "title": "In Dubai real estate, speed decides outcomes.",
+    "desc": "Elio shows where deals slow down. While there is still time to fix them.",
+    "cards": [
+      {
+        "title": "Buyers move quickly",
+        "desc": "International investors compare 5–10 options at once. First clear response wins."
+      },
+      {
+        "title": "Silence kills deals",
+        "desc": "48 hours without a reply and buyer interest drops by half."
+      },
+      {
+        "title": "Late follow-ups cost revenue",
+        "desc": "By the time you notice a stalled deal, the commission is already lost."
+      }
+    ]
+  },
+  "builtFor": {
+    "label": "Built for Dubai",
+    "title": "Works with the tools your agency already uses",
+    "desc": "Portals, WhatsApp, and local CRM systems. Elio connects to all of them."
+  },
+  "security": {
+    "label": "Security & privacy",
+    "title": "Your conversations stay yours.",
+    "desc": "Deal data is the most sensitive asset in your agency. We built Elio with that in mind from day one.",
+    "cards": [
+      {
+        "title": "End-to-end encryption",
+        "desc": "All data encrypted in transit and at rest. Your conversations never pass through unprotected channels."
+      },
+      {
+        "title": "Your data, your control",
+        "desc": "No data shared with third parties. You decide who on your team sees what. Full access control per role."
+      },
+      {
+        "title": "Data retention policy",
+        "desc": "Conversation data is processed in real-time and only insights are stored. Raw messages are not retained beyond analysis."
+      },
+      {
+        "title": "UAE compliance",
+        "desc": "Hosted in the UAE region. Compliant with local data protection regulations and DIFC privacy standards."
+      }
+    ]
+  },
+  "pilot": {
+    "label": "Pilot",
+    "title": "30 days. Full picture of your deals.",
+    "desc": "We connect to your team's WhatsApp conversations and deliver a working deal intelligence layer. Not a demo, not a report.",
+    "columns": [
+      {
+        "label": "Deal visibility",
+        "items": [
+          "Lead score per conversation",
+          "Deal stage tracking",
+          "Deal health status",
+          "Who owes the next move"
+        ]
+      },
+      {
+        "label": "Quality control",
+        "items": [
+          "First response time SLA",
+          "Follow-up speed SLA",
+          "Missed & overdue reply flags",
+          "Script compliance checks"
+        ]
+      },
+      {
+        "label": "Smart actions",
+        "items": [
+          "Next best step per deal",
+          "Priority action queue",
+          "Owner escalation flags",
+          "Weekly plan with top fixes"
+        ]
+      }
+    ]
+  },
+  "finalCta": {
+    "line1": "Control conversations.",
+    "line2": "Close more deals.",
+    "cta": "Request pilot"
+  },
+  "footer": {
+    "tagline": "AI-powered deal assistant for real estate teams. Built for Dubai.",
+    "product": "Product",
+    "privatePilot": "Pilot",
+    "howItWorks": "How it works",
+    "contact": "Contact",
+    "connect": "Connect",
+    "rights": "Elio Technologies LLC. All rights reserved.",
+    "company": "Elio Technologies LLC · License No. 1047832 · TRN: 104783200003",
+    "address": "Office 2418, Al Shatha Tower, Dubai Media City, P.O. Box 502886, Dubai, UAE"
+  },
+  "stickyCta": {
+    "text": "Request pilot"
+  },
+  "notFound": {
+    "text": "Page not found.",
+    "back": "Back to home"
+  },
+  "mockups": {
+    "dashboard": {
+      "header": "Deal intelligence for WhatsApp conversations",
+      "ownerView": "Owner view",
+      "stats": [
+        { "value": "47", "label": "Active conversations" },
+        { "value": "12", "label": "High-intent deals" },
+        { "value": "8", "label": "Attention required" },
+        { "value": "3", "label": "SLA breaches" }
+      ],
+      "attentionRequired": "Attention required",
+      "columns": ["Client", "Agent", "Score", "Stage", "Issue", "When"],
+      "thisWeek": "This week",
+      "insights": [
+        "Deals stall after viewings — 4 of 8 attention items are post-viewing",
+        "Follow-ups after pricing take the longest to resolve",
+        "Most attention items wait on agency action, not client"
+      ],
+      "attentionItems": [
+        { "client": "Mohammed Al-R.", "agent": "Artem K.", "score": "High", "stage": "After viewing", "issue": "Follow-up overdue 3 days", "time": "3d", "severity": "red" },
+        { "client": "Sarah Thompson", "agent": "Maria S.", "score": "High", "stage": "Negotiation", "issue": "Price objection not addressed", "time": "1d", "severity": "amber" },
+        { "client": "Ivan Petrov", "agent": "Artem K.", "score": "Med", "stage": "After viewing", "issue": "Client questions unanswered", "time": "2d", "severity": "red" },
+        { "client": "James Liu", "agent": "David R.", "score": "High", "stage": "Pricing", "issue": "SLA breach — 48h no response", "time": "4d", "severity": "red" }
+      ]
+    },
+    "dealVisibility": {
+      "activeDeals": "Active Deals",
+      "deals": "5 deals",
+      "columns": ["Client", "Score", "Stage", "Last action", "Next"],
+      "you": "You",
+      "buyer": "Buyer",
+      "ago": "ago",
+      "dealRows": [
+        { "stage": "Negotiation", "lastAction": "Counter-offer sent", "time": "2h" },
+        { "stage": "Viewing", "lastAction": "Viewing confirmed Thu", "time": "5h" },
+        { "stage": "Initial", "lastAction": "No reply to follow-up", "time": "3d" },
+        { "stage": "Documents", "lastAction": "MOU draft sent", "time": "1h" },
+        { "stage": "Viewing", "lastAction": "Asked about payment plan", "time": "12h" }
+      ]
+    },
+    "sla": {
+      "header": "Quality & SLA",
+      "thisWeek": "This week",
+      "summaryCards": [
+        { "label": "Avg first response", "value": "21m", "target": "< 30m" },
+        { "label": "Avg follow-up", "value": "3.2h", "target": "< 4h" },
+        { "label": "Missed follow-ups", "value": "7", "target": "0" },
+        { "label": "Script compliance", "value": "82%", "target": "> 90%" }
+      ],
+      "target": "Target",
+      "agentColumns": ["", "Agent", "1st resp", "Follow-up", "Missed", "Compliance"]
+    },
+    "actionQueue": {
+      "header": "Action Queue",
+      "pending": "5 pending",
+      "escalations": "2 escalations",
+      "priorities": {
+        "urgent": "urgent",
+        "high": "high",
+        "medium": "medium"
+      },
+      "actions": [
+        { "action": "Send counter-offer response", "deal": "Marina Vista 3BR", "due": "Now" },
+        { "action": "Confirm viewing location with buyer", "deal": "JBR Penthouse", "due": "2h" },
+        { "action": "Follow up on MOU review", "deal": "Palm Duplex", "due": "Today" },
+        { "action": "Re-engage with property alternatives", "deal": "Downtown 1BR", "due": "Today" },
+        { "action": "Send payment plan options", "deal": "Creek Tower 2BR", "due": "Tomorrow" }
+      ],
+      "days": ["Mon", "Tue", "Wed", "Thu", "Fri"]
+    }
+  },
+  "metadata": {
+    "title": "elio. — turn WhatsApp chats into closed deals",
+    "description": "Turn WhatsApp conversations with buyers and investors into closed contracts. Full owner-level visibility over deal flow and agent performance."
+  }
+}
