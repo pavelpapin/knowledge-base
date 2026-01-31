@@ -29,6 +29,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "croner": "^9.0.0"
+    "croner": "^9.0.0",
+    "yaml": "^2.8.2"
   }
 }

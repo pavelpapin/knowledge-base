@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import { Adapter, AdapterTool } from '../../gateway/types.js';
 import * as perplexity from '../../integrations/perplexity/index.js';
+import { withRateLimit } from '@elio/shared';
 
 const searchSchema = z.object({
   query: z.string().describe('Search query'),
@@ -24,7 +25,9 @@ const tools: AdapterTool[] = [
     schema: searchSchema,
     execute: async (params) => {
       const p = params as z.infer<typeof searchSchema>;
-      const result = await perplexity.research(p.query, { depth: p.depth });
+      const result = await withRateLimit('perplexity', () =>
+        perplexity.research(p.query, { depth: p.depth })
+      );
       return JSON.stringify(result, null, 2);
     }
   },
@@ -35,7 +38,9 @@ const tools: AdapterTool[] = [
     schema: factcheckSchema,
     execute: async (params) => {
       const p = params as z.infer<typeof factcheckSchema>;
-      const result = await perplexity.factCheck(p.claim);
+      const result = await withRateLimit('perplexity', () =>
+        perplexity.factCheck(p.claim)
+      );
       return JSON.stringify(result, null, 2);
     }
   }

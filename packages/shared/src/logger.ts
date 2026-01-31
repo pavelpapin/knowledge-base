@@ -10,7 +10,7 @@
 
 import * as path from 'path'
 import * as fs from 'fs'
-import { ELIO_ROOT } from './index.js'
+import * as os from 'os'
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
@@ -28,6 +28,9 @@ const LEVEL_PRIORITY: Record<LogLevel, number> = {
   warn: 2,
   error: 3,
 }
+
+// FIXED: Calculate ELIO_ROOT locally to avoid circular dependency
+const ELIO_ROOT = process.env.ELIO_ROOT || path.join(os.homedir(), '.claude')
 
 // Configuration
 let currentLevel: LogLevel = (process.env.LOG_LEVEL as LogLevel) || 'info'

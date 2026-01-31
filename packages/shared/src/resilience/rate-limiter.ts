@@ -14,14 +14,21 @@ let redisClient: any = null;
 async function getRedis() {
   if (!redisClient) {
     try {
-      // Dynamic import to avoid circular dependency
-      const workflow = await import('@elio/workflow');
-      const { getStateConnection } = workflow as any;
-      if (getStateConnection) {
-        redisClient = getStateConnection();
-      } else {
-        return null;
-      }
+      // Direct ioredis import to avoid circular dependency with @elio/workflow
+      const Redis = await import('ioredis').then(m => m.default);
+      const host = process.env.REDIS_HOST || 'localhost';
+      const port = parseInt(process.env.REDIS_PORT || '6379', 10);
+      const db = parseInt(process.env.REDIS_STATE_DB || '2', 10);
+      redisClient = new Redis({
+        host,
+        port,
+        db,
+        maxRetriesPerRequest: null,
+        retryStrategy: (times: number) => {
+          if (times > 3) return null;
+          return Math.min(times * 50, 2000);
+        }
+      });
     } catch (err) {
       logger.warn('Redis not available, falling back to in-memory rate limiting');
       return null;

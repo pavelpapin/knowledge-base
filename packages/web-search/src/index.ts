@@ -5,9 +5,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { SearchResponse, SearchOptions } from './types';
-import { searchSerper } from './providers/serper';
-import { searchDuckDuckGo } from './providers/duckduckgo';
+import { SearchResponse, SearchOptions } from './types.js';
+import { searchSerper } from './providers/serper.js';
+import { searchDuckDuckGo } from './providers/duckduckgo.js';
 
 const CREDENTIALS_PATH = '/root/.claude/.credentials.json';
 

@@ -275,13 +275,6 @@ workflows:
     replay_safety: safe
     done_when: "Brief delivered to Notion and notified via Telegram"
 
-  nightly-consilium:
-    version: "1.1.0"
-    updated_at: "2026-01-30"
-    description: "DEPRECATED — overlaps with system-review (which is implemented). Use consilium for ad-hoc multi-model discussions."
-    status: deprecated
-    superseded_by: system-review
-
   cold-outreach:
     version: "0.1.0"
     updated_at: "2026-01-30"
@@ -307,7 +300,7 @@ workflows:
   day-review:
     version: "1.0.0"
     updated_at: "2026-01-30"
-    description: "Обзор дня"
+    description: "Утренний/вечерний обзор дня: что сделано, что запланировано"
     docs: workflows/day-review/WORKFLOW.md
     stages: [collect, summarize, deliver]
     status: prompt-only
@@ -325,17 +318,6 @@ workflows:
     side_effects: [telegram_notify]
     replay_safety: safe
     done_when: "Discussion summary delivered"
-
-  # --- DEPRECATED ---
-  daily-review:
-    description: "DEPRECATED — merged into day-review"
-    status: deprecated
-    superseded_by: day-review
-
-  nightly-improvement:
-    description: "DEPRECATED — merged into system-review"
-    status: deprecated
-    superseded_by: system-review
 
 # -----------------------------------------------------------------------------
 # CONNECTORS — адаптеры к внешним сервисам (без собственной бизнес-логики)

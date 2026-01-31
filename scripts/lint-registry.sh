@@ -38,6 +38,19 @@ info() {
 }
 
 # -----------------------------------------------------------------------------
+# Check 0: JSON Schema validation (if ajv available)
+# -----------------------------------------------------------------------------
+if command -v npx &> /dev/null && [ -f "/root/.claude/registry.schema.json" ]; then
+  info "Validating YAML schema..."
+  
+  if npx ajv-cli validate -s /root/.claude/registry.schema.json -d "$REGISTRY" 2>/dev/null; then
+    info "✓ Schema validation passed"
+  else
+    error "Schema validation failed (run: npx ajv-cli validate -s registry.schema.json -d registry.yaml)"
+  fi
+fi
+
+# -----------------------------------------------------------------------------
 # Check 1: All workflows on disk have registry entries
 # -----------------------------------------------------------------------------
 info "Checking workflow inventory completeness..."

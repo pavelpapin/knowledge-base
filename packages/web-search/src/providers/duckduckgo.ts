@@ -3,7 +3,7 @@
  * Fallback when no Serper API key
  */
 
-import { SearchResult } from '../types';
+import { SearchResult } from '../types.js';
 
 const DDG_API_URL = 'https://api.duckduckgo.com/';
 

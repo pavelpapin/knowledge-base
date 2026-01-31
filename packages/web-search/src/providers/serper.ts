@@ -3,7 +3,7 @@
  * https://serper.dev - Google Search API
  */
 
-import { SearchResult, SerperResponse, SearchOptions } from '../types';
+import { SearchResult, SerperResponse, SearchOptions } from '../types.js';
 
 const SERPER_API_URL = 'https://google.serper.dev/search';
 
@@ -33,7 +33,7 @@ export async function searchSerper(
 
   const data = await response.json() as SerperResponse;
 
-  return (data.organic || []).map((item, index) => ({
+  return (data.organic || []).map((item: any, index: number) => ({
     title: item.title,
     url: item.link,
     snippet: item.snippet,

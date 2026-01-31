@@ -1,6 +1,6 @@
 /**
- * Progress Notifier
- * Handles debounced Telegram notifications for workflow progress
+ * Progress Notification System
+ * Handles debounced Telegram notifications
  */
 
 import type { NotificationChannel } from '../notifications/types.js'
@@ -13,50 +13,58 @@ export interface NotifierConfig {
 }
 
 export class ProgressNotifier {
-  private timer?: NodeJS.Timeout
-  private pending?: string
+  private notificationTimer?: NodeJS.Timeout
+  private pendingNotification?: string
+  private lastNotificationTime = 0
 
   constructor(private readonly config: NotifierConfig) {}
 
   queue(message: string): void {
     if (!this.config.enabled || !this.config.chatId) return
 
-    this.pending = message
+    this.pendingNotification = message
 
-    if (this.timer) clearTimeout(this.timer)
+    if (this.notificationTimer) {
+      clearTimeout(this.notificationTimer)
+    }
 
-    this.timer = setTimeout(() => {
-      if (this.pending) {
-        this.sendImmediate(this.pending)
-        this.pending = undefined
+    this.notificationTimer = setTimeout(() => {
+      if (this.pendingNotification) {
+        void this.sendImmediate(this.pendingNotification)
+        this.pendingNotification = undefined
       }
     }, this.config.debounceMs)
   }
 
   async sendImmediate(message: string): Promise<boolean> {
-    if (!this.config.channel || !this.config.chatId) return false
+    if (!this.config.channel || !this.config.chatId) {
+      return false
+    }
 
     try {
+      this.lastNotificationTime = Date.now()
       return await this.config.channel.send(this.config.chatId, message, {
         parseMode: 'Markdown',
       })
-    } catch {
+    } catch (error) {
+      console.error('[ProgressNotifier] Send failed:', error)
       return false
     }
   }
 
   async flush(): Promise<void> {
-    if (this.timer) {
-      clearTimeout(this.timer)
-      this.timer = undefined
+    if (this.notificationTimer) {
+      clearTimeout(this.notificationTimer)
+      this.notificationTimer = undefined
     }
-    if (this.pending) {
-      await this.sendImmediate(this.pending)
-      this.pending = undefined
+
+    if (this.pendingNotification) {
+      await this.sendImmediate(this.pendingNotification)
+      this.pendingNotification = undefined
     }
   }
 
-  makeProgressBar(percent: number): string {
+  static makeProgressBar(percent: number): string {
     const filled = Math.round(percent / 10)
     const empty = 10 - filled
     return '▓'.repeat(filled) + '░'.repeat(empty)

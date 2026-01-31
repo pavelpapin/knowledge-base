@@ -3,8 +3,10 @@
  * CLI process management with streaming I/O
  */
 
-export { AgentRunner, createClaudeRunner } from './AgentRunner.js'
+export { AgentRunner } from './AgentRunner.js'
 export type { AgentRunOptions, AgentRunnerConfig, SpawnResult } from './AgentRunner.js'
+
+export { createClaudeRunner } from './ClaudeRunner.js'
 
 export { BoundedAsyncQueue } from './BoundedAsyncQueue.js'
 export type { QueueOptions } from './BoundedAsyncQueue.js'
