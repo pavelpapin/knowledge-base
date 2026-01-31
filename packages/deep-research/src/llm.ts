@@ -51,9 +51,10 @@ function ensureEnv(): void {
 
 export async function callLLM(opts: LLMCallOptions): Promise<unknown> {
   ensureEnv();
-  const retries = opts.maxRetries ?? 2;
+  const maxRetries = opts.maxRetries ?? 2;
+  let lastError: Error | undefined;
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const raw = await callProvider(opts);
       const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -62,17 +63,66 @@ export async function callLLM(opts: LLMCallOptions): Promise<unknown> {
       if (opts.outputSchema) {
         const result = opts.outputSchema.safeParse(parsed);
         if (!result.success) {
-          if (attempt < retries) continue;
+          if (attempt < maxRetries) {
+            await sleep(exponentialBackoff(attempt));
+            continue;
+          }
           throw new Error(`Schema validation failed: ${result.error.message}`);
         }
         return result.data;
       }
       return parsed;
     } catch (err) {
-      if (attempt >= retries) throw err;
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      // Don't retry on non-retryable errors
+      if (!isRetryableError(lastError)) {
+        throw lastError;
+      }
+
+      if (attempt >= maxRetries) {
+        throw lastError;
+      }
+
+      // Exponential backoff: 1s, 2s, 4s, 8s...
+      const delayMs = exponentialBackoff(attempt);
+      await sleep(delayMs);
     }
   }
-  throw new Error('LLM call failed after all retries');
+  throw lastError ?? new Error('LLM call failed after all retries');
+}
+
+function exponentialBackoff(attempt: number): number {
+  const baseDelay = 1000; // 1 second
+  const maxDelay = 30000; // 30 seconds
+  const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+  // Add jitter to prevent thundering herd
+  const jitter = Math.random() * 0.3 * delay;
+  return delay + jitter;
+}
+
+function isRetryableError(err: Error): boolean {
+  const msg = err.message.toLowerCase();
+
+  // Retryable: rate limits, server errors, timeouts, network issues
+  if (msg.includes('429') || msg.includes('rate limit')) return true;
+  if (msg.includes('503') || msg.includes('502') || msg.includes('500')) return true;
+  if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) return true;
+  if (msg.includes('ECONNRESET') || msg.includes('ENOTFOUND')) return true;
+  if (msg.includes('network') || msg.includes('socket')) return true;
+
+  // Non-retryable: auth errors, bad requests, not found
+  if (msg.includes('400') || msg.includes('bad request')) return false;
+  if (msg.includes('401') || msg.includes('unauthorized')) return false;
+  if (msg.includes('403') || msg.includes('forbidden')) return false;
+  if (msg.includes('404') || msg.includes('not found')) return false;
+
+  // Unknown errors: retry to be safe
+  return true;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function callProvider(opts: LLMCallOptions): Promise<string> {
