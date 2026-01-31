@@ -10,8 +10,7 @@ import {
   checkRedisHealth,
   checkAllRedisHealth,
   closeAllConnections,
-  startPeriodicCleanup,
-  cleanupOldWorkflows,
+  cleanupOrphanedWorkflows,
 } from '@elio/workflow'
 
 // Environment config
@@ -59,12 +58,21 @@ async function main(): Promise<void> {
 
   // Run initial cleanup and start periodic cleanup
   console.log('[Worker] Running initial stream cleanup...')
-  await cleanupOldWorkflows().catch(err => {
+  await cleanupOrphanedWorkflows().catch(err => {
     console.warn('[Worker] Initial cleanup failed:', err.message)
   })
 
   // Start periodic cleanup (every hour)
-  const stopCleanup = startPeriodicCleanup(60 * 60 * 1000)
+  const cleanupInterval = setInterval(async () => {
+    try {
+      const result = await cleanupOrphanedWorkflows()
+      if (result.cleaned > 0) {
+        console.log(`[Worker] Periodic cleanup: removed ${result.cleaned} orphaned workflows`)
+      }
+    } catch (err) {
+      console.warn('[Worker] Periodic cleanup failed:', err)
+    }
+  }, 60 * 60 * 1000)
   console.log('[Worker] Periodic cleanup scheduled (hourly)')
 
   // Graceful shutdown
@@ -72,7 +80,7 @@ async function main(): Promise<void> {
     console.log(`[Worker] Received ${signal}, shutting down...`)
 
     // Stop periodic cleanup
-    stopCleanup()
+    clearInterval(cleanupInterval)
 
     // Close all workers
     await Promise.all(workers.map(w => w.close()))
